@@ -53,39 +53,53 @@ shortcut is acceptable just because time is short:
       running concurrently; note actual observed memory footprint
 - [ ] `git init` the `driftline` repo, push to GitHub (private is fine initially), set up branch
       protection / basic repo hygiene (`.gitignore` for data/, models/, `.env`)
-- [ ] Scaffold repo structure: `producer/`, `streaming/`, `feature_store/`, `models/`, `serving/`,
+- [x] Scaffold repo structure: `producer/`, `streaming/`, `feature_store/`, `models/`, `serving/`,
       `monitoring/`, `orchestration/`, `k8s/`, `tests/`, `.github/workflows/`, `notebooks/`
 - [ ] Set up `docker-compose.yml` for local iteration (Redpanda, Redis, Postgres, MLflow) distinct
-      from the k3d manifests used for the "production" deployment
-- [ ] Download IEEE-CIS Fraud Detection dataset (Kaggle, 590,540 rows, 434 features) onto the VM
-- [ ] Download Elliptic Bitcoin Dataset (203,769 nodes, 234,355 edges, 166 features, 49 time steps)
+      from the k3d manifests used for the "production" deployment — **blocked on cloud VM (Phase 0
+      VM item); local machine has only 7.3GB RAM, insufficient for this stack**
+- [x] Download IEEE-CIS Fraud Detection dataset (Kaggle, 590,540 rows, 434 features) — verified via
+      `scripts/inspect_ieee_cis.py`: 590,540 rows / 394 txn cols + 40 identity cols, 3.499% fraud
+- [x] Download Elliptic Bitcoin Dataset (203,769 nodes, 234,355 edges) — files verified present
+      (`elliptic_txs_features.csv`, `elliptic_txs_classes.csv`, `elliptic_txs_edgelist.csv`)
 - [ ] Download PaySim dataset (6.3M synthetic mobile-money transactions, load-test supplement only)
-- [ ] Verify dataset checksums/row counts match documented sizes; record raw file locations and
-      sizes in a `data/README.md`
+      — deferred, only needed for Phase 4 load testing, not blocking Phase 1-3
+- [x] Verify dataset checksums/row counts match documented sizes; record raw file locations and
+      sizes in a `data/README.md` — see `data/README.md` and `data/raw/README.md`
 - [ ] Decide and document Kafka topic/schema naming conventions up front (`transactions.raw`,
-      `transactions.scored`) to avoid churn later
+      `transactions.scored`) to avoid churn later — deferred to Phase 2 start
 
 ---
 
 ## Phase 1 — Data & Baseline Model
 
-- [ ] EDA notebook: fraud rate (~3.5% expected), feature nullness, TransactionDT range/coverage,
-      card/device/email cardinality
-- [ ] Implement **strict time-ordered split** (train on earlier months, holdout on later months) —
-      explicitly reject random k-fold for this task
-- [ ] Write and run a regression test asserting the split is time-ordered (max train timestamp <
-      min test timestamp) so this can never silently regress
-- [ ] Feature engineering pass reproducing the existing fraud-notebook pipeline's core features on
-      the new time-ordered split
-- [ ] Train XGBoost baseline on time-ordered split; record **baseline PR-AUC** and ROC-AUC
-- [ ] Train IsolationForest residual/anomaly signal as a second baseline component
-- [ ] Confirm any resampling (if used at all) is applied **inside the CV fold only**, never before
-      the split — write an explicit test that asserts this (fraud rate in held-out fold is
-      untouched/organic)
-- [ ] Write the "metrics lied to you" comparison artifact: same model, random-split metric vs.
-      time-split metric, side by side, with the delta explained — this is the week-1 interview story
-- [ ] Commit baseline metrics (PR-AUC, ROC-AUC, recall@1%FPR) to a `metrics/baseline.json` or
-      similar tracked file used as the comparison point for every later phase
+- [x] EDA / inspection pass (script, not notebook — equally rigorous): fraud rate (3.499%,
+      matches expected), feature nullness (41% overall; top-nulls dist2/D7/D13/D14 >89%),
+      TransactionDT range (86,400-15,811,131, ~182 days), card/addr/email cardinality —
+      `scripts/inspect_ieee_cis.py`, findings in `data/README.md`
+- [x] Implement **strict time-ordered split** (`time_ordered_split` — last 20% by `TransactionDT`
+      as holdout) — random k-fold explicitly rejected, documented in `data/README.md`
+- [x] Write and run a regression test asserting the split is time-ordered (max train timestamp <=
+      min test timestamp) — `tests/test_data.py::test_time_ordered_split_no_leakage`, plus a
+      negative-control test proving it would actually catch a random-split violation
+- [x] Feature engineering pass: native XGBoost NaN + pandas-category handling (no manual
+      imputation needed for the supervised path); separate median-imputed/ordinal-encoded matrix
+      for IsolationForest (documented as a genuinely different preprocessing path, not an
+      oversight) — `src/driftline/data.py`, `src/driftline/baseline.py`
+- [x] Train XGBoost baseline on time-ordered split; record **baseline PR-AUC and ROC-AUC** —
+      **PR-AUC 0.4751, ROC-AUC 0.8892, recall@1%FPR 0.376** (`results/baseline_metrics.json`)
+- [x] Train IsolationForest residual/anomaly signal as a second baseline component — PR-AUC
+      0.1193; **finding:** naive rank-average ensemble with it is *worse* than XGBoost alone
+      (precision@k=0.0 for IsolationForest alone) — see `results/README.md` for the full ablation
+      and the decision on how to handle this in the Phase 3 ensemble
+- [x] No resampling used in this baseline (scale_pos_weight instead of SMOTE/undersampling) —
+      sidesteps the resampling-before-split leakage class entirely rather than needing a test for
+      it; revisit only if a later phase actually introduces resampling
+- [x] Write the "metrics lied to you" comparison artifact: same model, random-split metric vs.
+      time-split metric, side by side, with the delta explained —
+      `scripts/random_vs_time_split.py`, results in `results/random_vs_time_split.json`
+- [x] Commit baseline metrics (PR-AUC, ROC-AUC, recall@1%FPR) to a tracked file used as the
+      comparison point for every later phase — `results/baseline_metrics.json`, committed
 
 ---
 
