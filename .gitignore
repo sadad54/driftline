@@ -9,11 +9,12 @@ venv/
 .ipynb_checkpoints/
 
 # data & model artifacts — never commit raw data or trained weights
-data/raw/
-data/processed/
+data/raw/*
+data/processed/*
+!data/raw/README.md
+!data/processed/.gitkeep
 *.parquet
 *.csv
-!data/**/README.md
 models/artifacts/
 *.pt
 *.pth
