@@ -1,0 +1,15 @@
+{
+  "time_ordered_split": {
+    "pr_auc": 0.47510586790020204,
+    "roc_auc": 0.8892203972523935,
+    "recall_at_1pct_fpr": 0.37598425196850394
+  },
+  "random_split": {
+    "pr_auc": 0.6973522256994701,
+    "roc_auc": 0.9441935582653265,
+    "recall_at_1pct_fpr": 0.6174691507379627
+  },
+  "pr_auc_inflation": 0.22224635779926805,
+  "roc_auc_inflation": 0.054973161012932925,
+  "explanation": "A random split lets rows from the same card/device/session appear in both train and test (IEEE-CIS transactions are not i.i.d. across time \u2014 repeated cards, addresses, and email domains recur within short windows). The model partially memorizes entity identity rather than learning genuinely predictive fraud patterns, so the random-split holdout score is inflated relative to the honest forward-looking time-ordered evaluation, which is what production actually faces."
+}

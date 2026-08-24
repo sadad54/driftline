@@ -32,6 +32,24 @@ Either way, this is exactly the kind of "quantify before hand-waving" finding wo
 the interview story about honest ablations — a candidate who just wrote "XGBoost + IsolationForest
 ensemble, PR-AUC 0.43" without noticing this would be reporting a worse number without knowing why.
 
+## The "metrics lied to you" artifact (`random_vs_time_split.py`)
+Same XGBoost config, same 590,540-row dataset — only the split changes.
+
+| Split | PR-AUC | ROC-AUC | Recall@1%FPR |
+|---|---|---|---|
+| Time-ordered (honest) | 0.4751 | 0.8892 | 0.3760 |
+| Random 80/20, stratified | **0.6974** | **0.9442** | **0.6175** |
+| Inflation | **+0.2222** | +0.0550 | **+0.2415** |
+
+A random split lets the same card/address/email-domain entity appear in both train and test —
+IEEE-CIS transactions are not i.i.d. across time, entities recur within short windows. The model
+partially memorizes entity identity rather than learning genuinely predictive fraud signal, so
+the random-split number is badly inflated relative to the honest forward-looking evaluation
+production actually faces. Recall@1%FPR alone swings from a defensible 37.6% to a fictitious
+61.7% — the exact anti-pattern the source doc's "how candidates do this badly" section warns
+about, now with a measured number instead of an assertion. This is the source doc's week-1
+interview story ("tell me about a time your metrics lied to you"), built for real.
+
 ## Runtime (this build machine, 7.3GB RAM / 8 vCPU, no GPU)
 - Data load + merge + downcast + sort: 181.5s
 - XGBoost fit (400 trees, 434 features, 472K rows): 89.7s

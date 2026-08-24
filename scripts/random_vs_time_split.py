@@ -2,6 +2,7 @@
 random 80/20 split vs. the honest time-ordered split. Quantifies exactly how much a random
 split inflates the number on this dataset, instead of asserting it abstractly.
 """
+import gc
 import json
 from pathlib import Path
 
@@ -19,15 +20,24 @@ def main():
 
     # Time-ordered (honest) — reuse the same split as the baseline run.
     train_t, test_t = time_ordered_split(df, test_frac=0.2)
-    _, scores_time = train_xgboost(train_t[cols], train_t["isFraud"], test_t[cols])
-    time_metrics = evaluate(test_t["isFraud"].to_numpy(), scores_time)
+    y_test_t = test_t["isFraud"].to_numpy()
+    model_t, scores_time = train_xgboost(train_t[cols], train_t["isFraud"], test_t[cols])
+    time_metrics = evaluate(y_test_t, scores_time)
+
+    # Free the time-split model/frames before building the random split — this machine has
+    # only 7.3GB RAM and holding df + train_t + test_t + train_r + test_r simultaneously OOMs.
+    del train_t, test_t, model_t, scores_time
+    gc.collect()
 
     # Random 80/20 (the anti-pattern) — same model config, same overall data, only the split changes.
     train_r, test_r = train_test_split(
         df, test_size=0.2, random_state=42, stratify=df["isFraud"]
     )
+    del df
+    gc.collect()
+    y_test_r = test_r["isFraud"].to_numpy()
     _, scores_random = train_xgboost(train_r[cols], train_r["isFraud"], test_r[cols])
-    random_metrics = evaluate(test_r["isFraud"].to_numpy(), scores_random)
+    random_metrics = evaluate(y_test_r, scores_random)
 
     result = {
         "time_ordered_split": time_metrics,
