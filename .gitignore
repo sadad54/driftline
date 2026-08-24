@@ -1,0 +1,32 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# data & model artifacts — never commit raw data or trained weights
+data/raw/
+data/processed/
+*.parquet
+*.csv
+!data/**/README.md
+models/artifacts/
+*.pt
+*.pth
+*.onnx
+mlruns/
+mlflow.db
+
+# secrets
+kaggle.json
+*.pem
+.kube/
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
