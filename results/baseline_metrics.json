@@ -1,0 +1,25 @@
+{
+  "n_train": 472432,
+  "n_test": 118108,
+  "train_fraud_rate": 0.03513521522674162,
+  "test_fraud_rate": 0.034409184813899145,
+  "precision_at_k_budget": 1181,
+  "xgboost": {
+    "pr_auc": 0.47510586790020204,
+    "roc_auc": 0.8892203972523935,
+    "recall_at_1pct_fpr": 0.37598425196850394,
+    "precision_at_k": 0.8162574089754445
+  },
+  "isolation_forest": {
+    "pr_auc": 0.11934650204918597,
+    "roc_auc": 0.7673335685622237,
+    "recall_at_1pct_fpr": 0.0,
+    "precision_at_k": 0.0
+  },
+  "rank_average_ensemble": {
+    "pr_auc": 0.4268612015401337,
+    "roc_auc": 0.881392859757886,
+    "recall_at_1pct_fpr": 0.3501476377952756,
+    "precision_at_k": 0.7646062658763759
+  }
+}

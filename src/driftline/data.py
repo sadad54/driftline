@@ -17,6 +17,7 @@ real downloaded files, not assumed from the source doc):
 """
 from __future__ import annotations
 
+import gc
 from pathlib import Path
 
 import pandas as pd
@@ -43,6 +44,20 @@ CATEGORICAL_COLS = [
 ] + [f"id_{i}" for i in (12, 15, 16, 23, 27, 28, 29, 30, 31, 33, 34, 35, 36, 37, 38)]
 
 
+def _downcast_numeric(df: pd.DataFrame) -> pd.DataFrame:
+    """Halve memory footprint (float64->float32, int64->int32/16) column-by-column, in place.
+
+    Required on this build machine (7.3GB total RAM): the naive merged frame's dense float64
+    block alone needs ~1.76GB to consolidate, which OOMs. Column-wise downcast avoids ever
+    materializing that block at full precision.
+    """
+    for col in df.select_dtypes(include=["float64"]).columns:
+        df[col] = pd.to_numeric(df[col], downcast="float")
+    for col in df.select_dtypes(include=["int64"]).columns:
+        df[col] = pd.to_numeric(df[col], downcast="integer")
+    return df
+
+
 def load_ieee_cis(raw_dir: Path = RAW_DIR) -> pd.DataFrame:
     """Load and left-join train_transaction + train_identity on TransactionID.
 
@@ -50,15 +65,18 @@ def load_ieee_cis(raw_dir: Path = RAW_DIR) -> pd.DataFrame:
     absence is itself informative (e.g. correlates with ProductCD / channel), not something to
     discard rows over.
     """
-    txn = pd.read_csv(raw_dir / "train_transaction.csv")
-    ident = pd.read_csv(raw_dir / "train_identity.csv")
+    txn = _downcast_numeric(pd.read_csv(raw_dir / "train_transaction.csv", engine="pyarrow"))
+    ident = _downcast_numeric(pd.read_csv(raw_dir / "train_identity.csv", engine="pyarrow"))
     df = txn.merge(ident, on="TransactionID", how="left")
+    del txn, ident
+    gc.collect()
 
     for col in CATEGORICAL_COLS:
         if col in df.columns:
             df[col] = df[col].astype("category")
 
-    return df.sort_values("TransactionDT").reset_index(drop=True)
+    df.sort_values("TransactionDT", inplace=True, ignore_index=True, kind="mergesort")
+    return df
 
 
 def add_month_bucket(df: pd.DataFrame, n_buckets: int = 6) -> pd.DataFrame:
