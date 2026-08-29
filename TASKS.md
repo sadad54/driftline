@@ -10,6 +10,21 @@ FastAPI service on k3d, with Evidently/Prometheus/Grafana drift monitoring and a
 drift-triggered retrain → shadow → promotion pipeline. This replaces the old static
 creditcard.csv/SMOTE notebook on the resume entirely.
 
+## Budget: $0 out of pocket, hard constraint
+
+The GCP VM runs entirely on the account's $300/90-day Free Trial credit (confirmed via the
+console, not a paid/org-billing account — Google does not auto-charge the card when trial credit
+runs out; it pauses instead). To keep this genuinely $0 and make the credit last across this and
+later projects:
+- **Stop the VM (`gcloud compute instances stop driftline-vm --zone us-central1-a`) whenever a
+  work session ends**, not just when idle mid-session — a stopped instance bills $0 compute (only
+  negligible persistent-disk storage, pennies/month, still inside free-tier/credit).
+- A budget alert is set on the billing account (MYR 50 / ~$10.60, at 50/90/100% thresholds) as an
+  early-warning tripwire — it emails, it does not hard-stop spend, so don't rely on it alone.
+- Before enabling any new GCP API/service, sanity-check it's covered by compute/free-tier usage,
+  not a metered API with per-call cost outside the free tier (e.g. avoid enabling paid Vertex AI
+  endpoints, premium network tiers, or multi-region resources without checking pricing first).
+
 ## Quality bar
 
 The timeline is compressed to a continuous ~72-hour build (not the source doc's 6-week/12-15h-a-week
