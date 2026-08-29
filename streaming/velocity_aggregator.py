@@ -49,8 +49,8 @@ WINDOWS = {
 
 PARQUET_SCHEMA = pa.schema([
     ("card1", pa.int64()),
-    ("window_start", pa.string()),
-    ("window_end", pa.string()),
+    ("window_start", pa.timestamp("us")),
+    ("window_end", pa.timestamp("us")),
     ("txn_count", pa.int64()),
     ("amt_sum", pa.float64()),
 ])
@@ -109,8 +109,8 @@ class ParquetVelocityMap(MapFunction):
     def map(self, row: Row) -> Row:
         self.buffer.append({
             "card1": row.card1,
-            "window_start": str(row.window_start),
-            "window_end": str(row.window_end),
+            "window_start": row.window_start,  # native datetime -- Feast needs a real
+            "window_end": row.window_end,      # timestamp column for timestamp_field, not a string
             "txn_count": row.txn_count,
             "amt_sum": row.amt_sum,
         })
