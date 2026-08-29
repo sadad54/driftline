@@ -22,6 +22,9 @@ models/artifacts/
 mlruns/
 mlflow.db
 
+# downloaded jars (fetched by streaming/download_jars.sh, not committed)
+streaming/jars/
+
 # secrets
 kaggle.json
 *.pem
