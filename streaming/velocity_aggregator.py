@@ -128,6 +128,7 @@ def build_velocity_table(t_env: StreamTableEnvironment, window_label: str):
 
 def main():
     env = StreamExecutionEnvironment.get_execution_environment()
+    env.add_jars(f"file://{JAR_PATH}")
     t_env = StreamTableEnvironment.create(env)
     t_env.get_config().set("pipeline.jars", f"file://{JAR_PATH}")
 
