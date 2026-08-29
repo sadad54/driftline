@@ -14,6 +14,7 @@ result = store.get_online_features(
         "card_velocity_7d:txn_count",
     ],
     entity_rows=entity_rows,
+    full_feature_names=True,
 ).to_dict()
 
 for i, card in enumerate([r["card1"] for r in entity_rows]):
