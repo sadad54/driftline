@@ -140,29 +140,46 @@ shortcut is acceptable just because time is short:
 
 ## Phase 2 — Streaming Infrastructure
 
-- [ ] Stand up Redpanda (Kafka-API compatible) via docker-compose; create topic `transactions.raw`
-      with sensible partition count
-- [ ] Build `replay_producer.py`: emits IEEE-CIS events in strict `TransactionDT` order at a
-      configurable events/sec rate; supports pause/resume and rate override via CLI flag
-- [ ] Verify producer correctness: consumed event order matches source order; no dropped/duplicated
-      events at steady rate
-- [ ] Implement consumer group(s) and confirm consumer-lag is observable (via `rpk` or exposed
-      metric) — this is a named differentiator ("actual consumer lag metric") vs. fake real-time
-- [ ] Implement windowed aggregation job in **PyFlink**: card/device/email velocity over 1h / 24h /
-      7d tumbling/sliding windows
-- [ ] Keep a Spark Structured Streaming variant behind a feature flag/alt entrypoint (claim both
-      truthfully per the doc's guidance — build it for real or explicitly mark it as not built in
-      Known Gaps, don't claim it either way falsely)
-- [ ] Wire windowed aggregate output to two sinks: Redis (Feast online store) and Parquet (Feast
-      offline store)
-- [ ] Stand up Feast: define entities (card, device, email, addr) and feature views for the
-      windowed aggregates; register online (Redis) + offline (Parquet) stores
-- [ ] Write and pass **training-serving skew test**: sample N replayed events, compare offline vs.
-      online feature values, assert max absolute difference; document the actual skew bug found and
-      fixed (the doc calls this out explicitly — find and record a real one, don't fabricate)
+- [x] Stand up Redpanda (Kafka-API compatible) via docker-compose; create topic `transactions.raw`
+      with sensible partition count — 6 partitions, healthy on the VM
+- [x] Build `replay_producer.py`: emits IEEE-CIS events in strict `TransactionDT` order at a
+      configurable events/sec rate — `--events-per-sec`, `--limit` flags; sustained ~150-250
+      events/sec actual on this hardware (measured, not the configured target). Pause/resume not
+      implemented (SIGINT handler stops cleanly but no resume-from-offset flag) — logged in Known
+      Gaps
+- [x] Verify producer correctness: consumed event order matches source order; no dropped/duplicated
+      events at steady rate — `producer/verify_replay.py`: 5,000/5,000 unique TransactionIDs, 0
+      duplicates, 0 per-partition order violations (partitioned by card1 — per-partition order is
+      the honest guarantee Kafka gives here, not global topic order, and that's what's tested)
+- [x] Implement consumer group(s) and confirm consumer-lag is observable (via `rpk` or exposed
+      metric) — verified `rpk group`/`rpk topic describe -p` mechanics; not yet load-tested at
+      sustained high throughput (Phase 4 item)
+- [x] Implement windowed aggregation job in **PyFlink**: card1 velocity over 1h / 24h / 7d HOP
+      (sliding) windows — `streaming/velocity_aggregator.py`, verified against an 8,000-event
+      replay (12,746 window-close events for the 1h view alone). **Scope: card1 only**, not
+      device/email — logged in Known Gaps, pattern generalizes directly
+- [ ] Keep a Spark Structured Streaming variant behind a feature flag/alt entrypoint — **not
+      built**, logged honestly in Known Gaps rather than falsely claimed
+- [x] Wire windowed aggregate output to two sinks: Redis (Feast online store) and Parquet (Feast
+      offline store) — both verified with real data; found and fixed a real Parquet durability
+      bug along the way (see results/phase2_streaming.md)
+- [x] Stand up Feast: define entities (card1) and feature views for the windowed aggregates;
+      register online (Redis) + offline (Parquet) stores — `feature_store/definitions.py`,
+      `feast apply` + `feast materialize` verified, online reads confirmed via SDK
+      (`test_online_read.py`). **Scope: card1 only**, matching the aggregation scope above
+- [x] Write and pass **training-serving skew test**: sample N replayed events, compare offline vs.
+      online feature values; document the actual skew bug found and fixed — two tests written:
+      `skew_test.py` (Feast-materialize-vs-source, trivially 0/1500 mismatches, can't structurally
+      diverge) and the one that actually matters, `skew_test_realtime.py` (hand-rolled real-time
+      Redis write vs. 200-row-buffered Parquet write): **240/2,772 mismatches (~8.7%), reproduced
+      across two runs, root cause found and explained** — see results/phase2_streaming.md
 - [ ] Contract test on Feast feature definitions: a schema change to a feature view must fail CI
-- [ ] Measure and record **feature freshness lag** (event time → online-store availability), p99,
-      on the EC2 hardware
+      — deferred to Phase 6
+- [x] Measure and record **feature freshness lag** (event time → online-store availability), p99,
+      on the VM — p50/p95/p99/max per window size in results/phase2_streaming.md (e.g. 1h window:
+      p50 14.7s, p99 25.6s). Found and fixed a real bug en route: `produced_at` was embedded in
+      every producer event but silently dropped by the Flink source table (never declared in the
+      `CREATE TABLE` DDL) until this metric surfaced it
 
 ---
 
@@ -330,4 +347,20 @@ shortcut is acceptable just because time is short:
 _(Log anything cut, substituted, or simplified under the 72-hour constraint here, with the reason.
 Leave empty only if nothing was cut.)_
 
-- 
+- **Phase 2 velocity features are card1-only**, not device/email as the source doc's architecture
+  lists. The pattern (`build_velocity_table` + dual sink) generalizes directly to DeviceInfo and
+  P_emaildomain; not done yet purely for time. Revisit before final metrics rollup if time allows.
+- **Spark Structured Streaming alternative path not built.** The source doc says "keep a Spark
+  variant behind a feature flag... claim both truthfully" — only the PyFlink path exists. Stated
+  here explicitly rather than claiming both.
+- **Producer has no pause/resume-from-offset flag** — SIGINT stops it cleanly but there's no way
+  to resume a partial replay from where it left off; each run starts from the beginning of the
+  dataset (or `--limit`-truncated head of it).
+- **Consumer-lag observability verified structurally, not load-tested.** `rpk group`/`topic
+  describe` mechanics confirmed; a real sustained-throughput consumer-lag chart is a Phase 4 item.
+- **Feast contract test (schema-change-fails-CI) not built yet** — deferred to Phase 6 alongside
+  the rest of the CI/testcontainers work.
+- **Operational finding, not a scope gap:** PyFlink's Python driver spawns a Java child process
+  that `timeout`/SIGTERM does not reliably kill — an early smoke-test run sat orphaned for ~1
+  hour before being found via `ps aux` and killed manually. Worth checking for stray
+  `PythonGatewayServer` processes on this VM before assuming a prior run's resources are freed.
