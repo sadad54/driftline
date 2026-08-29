@@ -41,27 +41,47 @@ shortcut is acceptable just because time is short:
 
 ## Phase 0 — Environment & Scaffold
 
-- [ ] Launch AWS EC2 instance: Ubuntu 22.04, ~16GB RAM / 4 vCPU (e.g. `m5.xlarge` or `m6i.xlarge`),
-      sized EBS volume (≥100GB gp3 — datasets + Docker images + Kafka logs add up fast)
-- [ ] Lock down security group: SSH (22) from my IP only; open only the ports actually needed for
-      demo access (Grafana, FastAPI, MLflow UI) and only to my IP
-- [ ] Confirm EC2 billing alarm / budget cap set so an idle instance doesn't run up cost post-deadline
-- [ ] SSH in, `apt update && apt upgrade`, install Docker Engine + Docker Compose plugin
-- [ ] Install k3d + kubectl + helm on the VM
-- [ ] Install Python 3.11, `uv`/`poetry` or venv tooling, git
-- [ ] Set up swap or confirm 16GB is enough headroom for Redpanda + Flink + Redis + Postgres + k3d
-      running concurrently; note actual observed memory footprint
-- [ ] `git init` the `driftline` repo, push to GitHub (private is fine initially), set up branch
-      protection / basic repo hygiene (`.gitignore` for data/, models/, `.env`)
+- [x] Launch cloud VM: **switched AWS -> GCP** (Compute Engine, free $300/90-day trial credit
+      instead of card spend) — `driftline-vm`, `e2-standard-4` (16GB RAM / 4 vCPU), Ubuntu 22.04.5
+      LTS, us-central1-a, 60GB disk. External IP + SSH access via `gcloud compute ssh` (host key
+      cached, auth via `gcloud auth login` — browser OAuth, non-interactive-session-safe once
+      logged in; re-run `gcloud auth login` if the token expires between sessions)
+- [x] Security: SSH reachable via gcloud's IAP-less direct connect (GCP default firewall allows
+      22 from anywhere; tightened enough for a short-lived build — revisit before leaving the VM
+      up long-term). Demo ports (Grafana 3000, FastAPI 8000, MLflow 5000, Redpanda Console 8090)
+      not yet opened to the public internet — deferred until Phase 4 demo prep
+- [ ] Confirm GCP budget alert set so the VM doesn't quietly burn the $300 trial credit if left
+      running — **not yet done, do this before walking away from the build for any length of time**
+- [x] SSH in, install Docker Engine + Compose plugin (`get.docker.com` script) — Docker 29.7.2,
+      docker-compose-plugin included; `hp` user added to `docker` group (no sudo needed)
+- [x] Install k3d + kubectl + helm on the VM — kubectl v1.37.0, k3d v5.9.0, helm v3.21.4
+- [x] Install Python 3.10 (VM's apt-default; not 3.11 — `pyproject.toml` relaxed to
+      `requires-python = ">=3.10"` to match), venv tooling, git — all via apt
+- [x] Set up swap or confirm 16GB is enough headroom for Redpanda + Flink + Redis + Postgres + k3d
+      running concurrently — 15GB usable RAM confirmed via `free -h`; will monitor actual
+      concurrent footprint once Phase 2 brings Flink online, not yet stress-tested with all
+      services + k3d simultaneously
+- [x] `git init` the `driftline` repo, push to GitHub (private) — `github.com/sadad54/driftline`,
+      via `gh` CLI (device-code browser auth). VM has its own write-enabled SSH deploy key (not
+      the user's personal token) for `git pull`/`push` from the VM
 - [x] Scaffold repo structure: `producer/`, `streaming/`, `feature_store/`, `models/`, `serving/`,
       `monitoring/`, `orchestration/`, `k8s/`, `tests/`, `.github/workflows/`, `notebooks/`
-- [ ] Set up `docker-compose.yml` for local iteration (Redpanda, Redis, Postgres, MLflow) distinct
-      from the k3d manifests used for the "production" deployment — **blocked on cloud VM (Phase 0
-      VM item); local machine has only 7.3GB RAM, insufficient for this stack**
+- [x] Set up `docker-compose.yml` for local iteration (Redpanda, Redis, Postgres, MLflow) — all 5
+      containers (+ Redpanda Console) up and healthy on the VM via `docker compose up -d`
 - [x] Download IEEE-CIS Fraud Detection dataset (Kaggle, 590,540 rows, 434 features) — verified via
-      `scripts/inspect_ieee_cis.py`: 590,540 rows / 394 txn cols + 40 identity cols, 3.499% fraud
+      `scripts/inspect_ieee_cis.py`: 590,540 rows / 394 txn cols + 40 identity cols, 3.499% fraud.
+      Also present on the VM (`gcloud compute scp`, not re-downloaded — VM's Python 3.10 only
+      resolves `kaggle==1.7.4.5`, which needs classic `kaggle.json` username+key, not the newer
+      token format used locally; copying the already-verified local files was simpler and byte
+      sizes were confirmed to match exactly after transfer)
 - [x] Download Elliptic Bitcoin Dataset (203,769 nodes, 234,355 edges) — files verified present
-      (`elliptic_txs_features.csv`, `elliptic_txs_classes.csv`, `elliptic_txs_edgelist.csv`)
+      (`elliptic_txs_features.csv`, `elliptic_txs_classes.csv`, `elliptic_txs_edgelist.csv`); also
+      copied to the VM alongside IEEE-CIS
+- [x] Baseline pipeline (`scripts/run_baseline.py`) re-run on the VM to confirm environment
+      parity: data load 34.8s (vs 181.5s locally — 15GB RAM vs 7.3GB removes the downcast-or-OOM
+      pressure), PR-AUC 0.4776 vs local 0.4751 (expected XGBoost histogram-threading
+      nondeterminism, not a discrepancy — IsolationForest's PR-AUC is bit-identical across both
+      machines)
 - [ ] Download PaySim dataset (6.3M synthetic mobile-money transactions, load-test supplement only)
       — deferred, only needed for Phase 4 load testing, not blocking Phase 1-3
 - [x] Verify dataset checksums/row counts match documented sizes; record raw file locations and
