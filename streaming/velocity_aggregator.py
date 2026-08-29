@@ -26,6 +26,7 @@ legitimate, lower-risk substitute that still round-trips real Redis and real Par
 """
 from __future__ import annotations
 
+import os
 import time
 import uuid
 from pathlib import Path
@@ -163,7 +164,7 @@ def main():
     t_env = StreamTableEnvironment.create(env)
     t_env.get_config().set("pipeline.jars", f"file://{JAR_PATH}")
 
-    t_env.execute_sql("""
+    t_env.execute_sql(f"""
         CREATE TABLE transactions_raw (
             TransactionID BIGINT,
             TransactionDT BIGINT,
@@ -176,7 +177,7 @@ def main():
             'connector' = 'kafka',
             'topic' = 'transactions.raw',
             'properties.bootstrap.servers' = 'localhost:19092',
-            'properties.group.id' = 'flink-velocity-aggregator',
+            'properties.group.id' = '{os.environ.get("FLINK_GROUP_ID", "flink-velocity-aggregator")}',
             'scan.startup.mode' = 'earliest-offset',
             'format' = 'json',
             'json.ignore-parse-errors' = 'true'
