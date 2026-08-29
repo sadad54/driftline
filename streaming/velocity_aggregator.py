@@ -34,7 +34,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from pyflink.common import Row
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.datastream.functions import RichMapFunction, RichSinkFunction
+from pyflink.datastream.functions import MapFunction
 from pyflink.table import StreamTableEnvironment
 
 JAR_PATH = Path(__file__).resolve().parent / "jars" / "flink-sql-connector-kafka-5.0.0-2.2.jar"
@@ -55,9 +55,11 @@ PARQUET_SCHEMA = pa.schema([
 ])
 
 
-class RedisVelocitySink(RichMapFunction):
+class RedisVelocityMap(MapFunction):
     """Upserts the latest completed window's aggregate per card1 into Redis -- this IS the
-    Feast online store's backing store for these features."""
+    Feast online store's backing store for these features. Side-effecting map, not a terminal
+    sink: PyFlink 2.x's SinkFunction wraps Java sinks only, so a custom Python "sink" here is a
+    MapFunction chained ahead of a real terminal op (see main() -- terminated with .print())."""
 
     def __init__(self, window_label: str):
         self.window_label = window_label
@@ -76,7 +78,7 @@ class RedisVelocitySink(RichMapFunction):
         return row
 
 
-class ParquetVelocitySink(RichSinkFunction):
+class ParquetVelocityMap(MapFunction):
     """Appends every closed window row to a Parquet file -- Feast's offline store. Writes
     per-row (no internal batching) to guarantee durability if the job is cancelled mid-run;
     the known cost is many small row groups rather than a few large ones, a real perf tradeoff
@@ -91,7 +93,7 @@ class ParquetVelocitySink(RichSinkFunction):
         OFFLINE_DIR.mkdir(parents=True, exist_ok=True)
         self.writer = pq.ParquetWriter(str(self.path), PARQUET_SCHEMA)
 
-    def invoke(self, row: Row, context):
+    def map(self, row: Row) -> Row:
         batch = pa.RecordBatch.from_pylist([{
             "card1": row.card1,
             "window_start": str(row.window_start),
@@ -100,6 +102,7 @@ class ParquetVelocitySink(RichSinkFunction):
             "amt_sum": row.amt_sum,
         }], schema=PARQUET_SCHEMA)
         self.writer.write_batch(batch)
+        return row
 
     def close(self):
         if self.writer:
@@ -150,7 +153,7 @@ def main():
     for label in WINDOWS:
         table = build_velocity_table(t_env, label)
         ds = t_env.to_data_stream(table)
-        ds.map(RedisVelocitySink(label)).add_sink(ParquetVelocitySink(label))
+        ds.map(RedisVelocityMap(label)).map(ParquetVelocityMap(label)).print()
 
     env.execute("driftline-velocity-aggregator")
 
