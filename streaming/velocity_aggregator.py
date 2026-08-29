@@ -26,7 +26,7 @@ legitimate, lower-risk substitute that still round-trips real Redis and real Par
 """
 from __future__ import annotations
 
-import json
+import time
 import uuid
 from pathlib import Path
 
@@ -71,11 +71,20 @@ class RedisVelocityMap(MapFunction):
 
     def map(self, row: Row) -> Row:
         key = f"velocity:card1:{self.window_label}:{row.card1}"
+        write_time = time.time()
+        # Freshness lag: wall-clock time from when the producer put this event on the wire
+        # (produced_at) to when its window's aggregate becomes readable in the online store.
+        # MAX(produced_at) over the window means this is the lag for the freshest contributing
+        # event, not the window's oldest -- the honest "how stale could a just-arrived event's
+        # own feature be" number.
+        lag = write_time - row.last_produced_at if row.last_produced_at else None
         self.client.hset(key, mapping={
             "txn_count": row.txn_count,
             "amt_sum": row.amt_sum,
             "window_end": str(row.window_end),
         })
+        if lag is not None:
+            self.client.rpush(f"freshness_lags:{self.window_label}", lag)
         return row
 
 
@@ -138,7 +147,8 @@ def build_velocity_table(t_env: StreamTableEnvironment, window_label: str):
             window_start,
             window_end,
             COUNT(*) AS txn_count,
-            SUM(TransactionAmt) AS amt_sum
+            SUM(TransactionAmt) AS amt_sum,
+            MAX(produced_at) AS last_produced_at
         FROM TABLE(
             HOP(TABLE transactions_raw, DESCRIPTOR(event_time), {slide}, {size})
         )
@@ -159,6 +169,7 @@ def main():
             TransactionDT BIGINT,
             TransactionAmt DOUBLE,
             card1 BIGINT,
+            produced_at DOUBLE,
             event_time AS TO_TIMESTAMP(FROM_UNIXTIME(TransactionDT)),
             WATERMARK FOR event_time AS event_time - INTERVAL '5' MINUTE
         ) WITH (
