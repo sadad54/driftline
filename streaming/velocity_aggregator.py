@@ -27,6 +27,7 @@ legitimate, lower-risk substitute that still round-trips real Redis and real Par
 from __future__ import annotations
 
 import json
+import uuid
 from pathlib import Path
 
 import redis
@@ -79,34 +80,54 @@ class RedisVelocityMap(MapFunction):
 
 
 class ParquetVelocityMap(MapFunction):
-    """Appends every closed window row to a Parquet file -- Feast's offline store. Writes
-    per-row (no internal batching) to guarantee durability if the job is cancelled mid-run;
-    the known cost is many small row groups rather than a few large ones, a real perf tradeoff
-    to revisit if this needs to sustain much higher throughput than a demo replay."""
+    """Appends every closed window row to Feast's offline store, as small self-contained
+    Parquet part-files rather than one growing file needing a final close() to write its
+    footer.
+
+    This fixes a real bug found while testing: a single incrementally-appended ParquetWriter
+    produces an INVALID file (no footer, "magic bytes not found") if the process is killed
+    (SIGTERM, e.g. via `timeout`) rather than shut down gracefully -- which is exactly how a
+    streaming job actually gets stopped in practice, not just in this test. Buffering a small
+    batch and flushing it as its own complete part-file (`pq.write_table`, atomic per call)
+    bounds data loss to at most one unflushed buffer's worth of rows on an ungraceful kill,
+    instead of losing the entire file's contents. A directory of part-files is a standard
+    pattern for streaming-to-lake sinks and reads back as one logical table via
+    `pyarrow.dataset` or `pd.read_parquet(directory)`; compaction into fewer files is a real,
+    documented future improvement, not implemented here."""
+
+    FLUSH_EVERY = 200
 
     def __init__(self, window_label: str):
         self.window_label = window_label
-        self.writer = None
-        self.path = OFFLINE_DIR / f"card_velocity_{window_label}.parquet"
+        self.dir = OFFLINE_DIR / f"card_velocity_{window_label}"
+        self.buffer = []
 
     def open(self, runtime_context):
-        OFFLINE_DIR.mkdir(parents=True, exist_ok=True)
-        self.writer = pq.ParquetWriter(str(self.path), PARQUET_SCHEMA)
+        self.dir.mkdir(parents=True, exist_ok=True)
+        self.buffer = []
 
     def map(self, row: Row) -> Row:
-        batch = pa.RecordBatch.from_pylist([{
+        self.buffer.append({
             "card1": row.card1,
             "window_start": str(row.window_start),
             "window_end": str(row.window_end),
             "txn_count": row.txn_count,
             "amt_sum": row.amt_sum,
-        }], schema=PARQUET_SCHEMA)
-        self.writer.write_batch(batch)
+        })
+        if len(self.buffer) >= self.FLUSH_EVERY:
+            self._flush()
         return row
 
+    def _flush(self):
+        if not self.buffer:
+            return
+        table = pa.Table.from_pylist(self.buffer, schema=PARQUET_SCHEMA)
+        part_path = self.dir / f"part-{uuid.uuid4().hex}.parquet"
+        pq.write_table(table, str(part_path))
+        self.buffer = []
+
     def close(self):
-        if self.writer:
-            self.writer.close()
+        self._flush()
 
 
 def build_velocity_table(t_env: StreamTableEnvironment, window_label: str):
