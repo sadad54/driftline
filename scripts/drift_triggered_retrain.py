@@ -139,7 +139,7 @@ def main():
                 candidate_pr_auc = evaluate(y_shadow, candidate_shadow_scores)["pr_auc"]
                 serving_pr_auc_on_shadow = evaluate(y_shadow, serving_shadow_scores)["pr_auc"]
                 regression = serving_pr_auc_on_shadow - candidate_pr_auc
-                promoted = regression <= PROMOTION_TOLERANCE
+                promoted = bool(regression <= PROMOTION_TOLERANCE)  # numpy.bool_ isn't JSON-serializable
 
                 mlflow.log_params({
                     "trigger_week": week, "n_features_breach": n_breach,
