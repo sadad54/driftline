@@ -88,6 +88,26 @@ services:
       postgres:
         condition: service_healthy
 
+  scorer:
+    build:
+      context: .
+      dockerfile: serving/Dockerfile
+    container_name: driftline-scorer
+    # host networking rather than the compose bridge network + depends_on: feature_store.yaml's
+    # online_store.connection_string is "localhost:6379" (matching how every other script in
+    # this repo reaches Redis when run directly on the VM). On the default bridge network
+    # "localhost" inside the container would resolve to the container itself, not the redis
+    # service -- host networking is the simplest fix that doesn't require an
+    # environment-specific feature_store.yaml. Linux-only, fine for this VM.
+    network_mode: "host"
+    volumes:
+      - ./models/artifacts:/app/models/artifacts:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
 volumes:
   redpanda_data:
   redis_data:
