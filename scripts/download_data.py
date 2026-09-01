@@ -40,7 +40,7 @@ def download(name: str, spec: dict) -> None:
     else:
         cmd = ["kaggle", "datasets", "download", "-d", spec["ref"], "-p", str(spec["dest"]), "--unzip"]
     print(f"[{name}] running: {' '.join(cmd)}")
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.returncode != 0:
         print(f"[{name}] FAILED\nstdout: {result.stdout}\nstderr: {result.stderr}", file=sys.stderr)
         if spec["kind"] == "competition" and "403" in result.stderr:

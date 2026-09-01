@@ -6,8 +6,6 @@ data/README.md); there's no real calendar in this dataset.
 import json
 from pathlib import Path
 
-import numpy as np
-
 from driftline.baseline import evaluate, train_xgboost
 from driftline.data import add_month_bucket, feature_columns, load_ieee_cis
 

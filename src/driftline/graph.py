@@ -44,7 +44,7 @@ class ValueNodeVocab:
     def __init__(self):
         self.mapping: dict[tuple[str, object], int] = {}
 
-    def fit(self, df: pd.DataFrame, id_columns: list[str] = ID_COLUMNS) -> "ValueNodeVocab":
+    def fit(self, df: pd.DataFrame, id_columns: list[str] = ID_COLUMNS) -> ValueNodeVocab:
         next_id = 0
         for col in id_columns:
             for val in df[col].dropna().unique():

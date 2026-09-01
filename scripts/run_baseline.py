@@ -32,12 +32,12 @@ def main():
 
     print("\nTraining XGBoost...")
     t0 = time.time()
-    xgb_model, xgb_scores = train_xgboost(X_train, y_train, X_test)
+    _xgb_model, xgb_scores = train_xgboost(X_train, y_train, X_test)
     print(f"  done in {time.time() - t0:.1f}s")
 
     print("Training IsolationForest...")
     t0 = time.time()
-    iso_model, iso_scores = train_isolation_forest(X_train, X_test)
+    _iso_model, iso_scores = train_isolation_forest(X_train, X_test)
     print(f"  done in {time.time() - t0:.1f}s")
 
     combined_scores = rank_average(xgb_scores, iso_scores)

@@ -76,10 +76,15 @@ jobs:
           python-version: "3.11"
           cache: "pip"
       - name: Install dependencies (core + xgboost/onnx only)
+        # numpy is re-pinned in this same command, not left to the earlier `-r
+        # requirements-ci-core.txt` call alone: onnx/onnxruntime declare numpy>=2, and installing
+        # them in a separate pip invocation silently upgrades numpy past 1.26.4 -- which breaks
+        # xgboost==2.0.3's own internal `np.NaN` usage (removed in numpy 2.0). Found by running
+        # this job, not assumed -- the exact same failure mode hit locally while testing this.
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-ci-core.txt
-          pip install scikit-learn==1.4.2 xgboost==2.0.3 onnx>=1.16.0 onnxruntime>=1.17.0 onnxmltools>=1.12.0
+          pip install "numpy==1.26.4" scikit-learn==1.4.2 xgboost==2.0.3 onnx>=1.16.0 onnxruntime>=1.17.0 onnxmltools>=1.12.0
           pip install -e . --no-deps
       - name: ONNX export + parity check (CI sample)
         run: python scripts/export_onnx.py --fixture

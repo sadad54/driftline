@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import xgboost as xgb
 
-from driftline.data import add_month_bucket, feature_columns, load_ieee_cis, time_ordered_split
+from driftline.data import feature_columns, load_ieee_cis, time_ordered_split
 
 MODEL_PATH = Path(__file__).resolve().parent.parent / "models" / "artifacts" / "xgboost_baseline.json"
 RESULTS_PATH = Path(__file__).resolve().parent.parent / "results" / "analyst_budget_simulation.json"

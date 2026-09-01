@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "feature_store"))
 
-from definitions import card_velocity_1h_fv, card_velocity_24h_fv, card_velocity_7d_fv  # noqa: E402
+from definitions import card_velocity_1h_fv, card_velocity_7d_fv, card_velocity_24h_fv
 
 EXPECTED_FEATURE_VIEWS = {
     "card_velocity_1h": {"txn_count", "amt_sum"},

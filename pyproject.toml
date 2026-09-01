@@ -16,3 +16,9 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 110
+
+[tool.ruff.lint]
+# BLE001 (blind `except Exception`) is intentionally allowed: this codebase uses it deliberately
+# for availability checks (Docker daemon reachable? Feast store reachable?) where any failure
+# mode should be treated the same way -- fall back / mark unavailable -- not for swallowing bugs.
+ignore = ["BLE001"]

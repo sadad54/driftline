@@ -13,7 +13,6 @@ Requires Docker. Skipped automatically if the Docker daemon isn't reachable (e.g
 machines without Docker running) -- runs for real in CI where Docker is available.
 """
 import json
-import time
 
 import pytest
 

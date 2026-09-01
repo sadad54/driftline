@@ -3,6 +3,8 @@ Real transactions, not synthetic data -- exercises the actual categorical-encodi
 import json
 from pathlib import Path
 
+import pandas as pd
+
 from driftline.data import feature_columns, load_ieee_cis, time_ordered_split
 
 OUT_PATH = Path(__file__).resolve().parent.parent / "serving" / "sample_requests.json"
@@ -20,9 +22,9 @@ def main():
         for col in cols:
             val = row[col]
             if str(df[col].dtype) == "category":
-                features[col] = None if val is None or (isinstance(val, float) and val != val) else str(val)
+                features[col] = None if pd.isna(val) else str(val)
             else:
-                features[col] = None if val != val else float(val)  # NaN check
+                features[col] = None if pd.isna(val) else float(val)
         requests.append({"features": features, "card1": int(row["card1"])})
 
     with open(OUT_PATH, "w") as f:

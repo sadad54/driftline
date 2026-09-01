@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 from sklearn.ensemble import IsolationForest
-from sklearn.metrics import average_precision_score, precision_recall_curve, roc_auc_score, roc_curve
+from sklearn.metrics import average_precision_score, roc_auc_score, roc_curve
 
 
 def recall_at_fpr(y_true: np.ndarray, scores: np.ndarray, target_fpr: float = 0.01) -> float:

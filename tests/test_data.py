@@ -1,5 +1,4 @@
 import pandas as pd
-import pytest
 
 from driftline.data import add_month_bucket, feature_columns, time_ordered_split
 

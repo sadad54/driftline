@@ -14,13 +14,19 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
+from torch import nn
 from torch_geometric.data import Data
 from torch_geometric.loader import NeighborLoader
 
 from driftline.baseline import evaluate, rank_average, train_isolation_forest, train_xgboost
 from driftline.data import feature_columns, load_ieee_cis, time_ordered_split
-from driftline.graph import ID_COLUMNS, ValueNodeVocab, build_graph_edges, build_numeric_features, numeric_feature_columns
+from driftline.graph import (
+    ID_COLUMNS,
+    ValueNodeVocab,
+    build_graph_edges,
+    build_numeric_features,
+    numeric_feature_columns,
+)
 from driftline.graphsage_model import EntitySAGE
 
 RESULTS_PATH = Path(__file__).resolve().parent.parent / "results" / "graphsage_results.json"
@@ -146,7 +152,7 @@ def main():
     print("\nTraining XGBoost baseline (same split, for ensemble)...")
     t0 = time.time()
     cols = feature_columns(df)
-    xgb_model, xgb_scores = train_xgboost(train[cols], train["isFraud"], test[cols])
+    _xgb_model, xgb_scores = train_xgboost(train[cols], train["isFraud"], test[cols])
     print(f"  done in {time.time() - t0:.1f}s")
 
     print("Training IsolationForest (for the full ablation row)...")

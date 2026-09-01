@@ -142,5 +142,5 @@ def train_numeric_serving_variant(train, test, cols):
 
 
 if __name__ == "__main__":
-    import pandas as pd  # noqa: E402  (only needed in the fallback path)
+    import pandas as pd
     main()
