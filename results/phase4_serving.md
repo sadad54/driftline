@@ -71,10 +71,32 @@ review budget on this data's volume, an analyst team should expect ~60% of what 
 actually be fraud, with real day-to-day variance (33%-100%) worth being able to discuss, not
 just the mean.
 
+## k3d deployment
+Applied `k8s/scorer-deployment.yaml` to a real k3d cluster on this VM (2 replicas, HPA 2-6 on
+70% CPU, PodDisruptionBudget minAvailable=1, liveness/readiness probes). Both pods came up
+`Running`/`1/1 Ready`; verified via `kubectl port-forward` + a real scoring request — **the
+fraud_score matched the docker-compose deployment exactly** (0.10728633403778076), confirming
+correct, deterministic inference inside the cluster.
+
+**Two real issues found, not hidden:**
+1. **`velocity_features_available: false`** in the k3d pod (vs. `true` in docker-compose). The
+   k3d cluster's pod network is a separate Docker network (`k3d-driftline`) from
+   docker-compose's default network (`driftline_default`) — `feature_store.yaml`'s
+   `localhost:6379` inside a k3d pod resolves to the pod itself, not the docker-compose Redis
+   container. This is a genuine, expected consequence of the two deployment paths living on
+   different networks, not wired together here. Fix (not applied, logged in Known Gaps): either
+   deploy Redis inside the k3d cluster too, or give the scorer pods `hostNetwork: true` the same
+   way the docker-compose scorer service uses `network_mode: host`.
+2. **4.78-second latency on that first k3d request** (vs. ~21ms for the equivalent
+   docker-compose/direct request) — consistent with the Feast/Redis connection attempt hanging
+   on a TCP timeout rather than failing fast, given issue #1 above. Not root-caused further
+   (would need to trace the actual redis-py connect timeout behavior inside the pod); logged as
+   the likely cause rather than asserted as certain.
+
 ## What's not done yet (Known Gaps)
 - Multi-worker/replica latency re-benchmark (the direct fix for the queueing finding above).
-- k3d deployment: manifest written (`k8s/scorer-deployment.yaml`) but not yet applied to a
-  running k3d cluster on this VM.
+- k3d/docker-compose network bridging for Feast/Redis (see above) — the scorer works correctly
+  in both deployment paths, but Feast connectivity only works in the docker-compose one right now.
 - End-to-end smoke test (producer → Redpanda → Flink → Feast → scorer → `transactions.scored`)
   not yet run as one connected pipeline — each stage verified independently so far.
 - Velocity features fetched but not wired into the scoring model's input (see above).
