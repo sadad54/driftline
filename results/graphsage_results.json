@@ -1,0 +1,50 @@
+{
+  "n_train": 472432,
+  "n_test": 118108,
+  "num_value_nodes": 14811,
+  "num_numeric_features": 369,
+  "graphsage_train_time_sec": 242.59986996650696,
+  "graphsage_inference_time_sec": 2.7979447841644287,
+  "graphsage_n_batches": 2310,
+  "graphsage_final_avg_loss": 0.6738497614473492,
+  "ablation": {
+    "xgboost_alone": {
+      "pr_auc": 0.47761399072443855,
+      "roc_auc": 0.8916532014977919,
+      "recall_at_1pct_fpr": 0.3779527559055118,
+      "precision_at_k": 0.8221845893310754
+    },
+    "graphsage_alone": {
+      "pr_auc": 0.24522168373934172,
+      "roc_auc": 0.839315702970148,
+      "recall_at_1pct_fpr": 0.22268700787401574,
+      "precision_at_k": 0.3556308213378493
+    },
+    "xgboost_plus_graphsage": {
+      "pr_auc": 0.46866068898503477,
+      "roc_auc": 0.8894242173883294,
+      "recall_at_1pct_fpr": 0.3764763779527559,
+      "precision_at_k": 0.8069432684165961
+    },
+    "xgboost_plus_graphsage_plus_isoforest": {
+      "pr_auc": 0.4602136602480109,
+      "roc_auc": 0.895549865216409,
+      "recall_at_1pct_fpr": 0.38361220472440943,
+      "precision_at_k": 0.7984758679085521
+    }
+  },
+  "no_history_slice": {
+    "n_new_card": 823,
+    "fraud_rate_new_card": 0.046172539489671933,
+    "xgboost_alone_new_card": {
+      "pr_auc": 0.6828259814243145,
+      "roc_auc": 0.9393898759637948,
+      "recall_at_1pct_fpr": 0.5263157894736842
+    },
+    "ensemble_new_card": {
+      "pr_auc": 0.6219303745595788,
+      "roc_auc": 0.9033858531679517,
+      "recall_at_1pct_fpr": 0.5526315789473685
+    }
+  }
+}

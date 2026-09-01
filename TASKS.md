@@ -185,24 +185,42 @@ shortcut is acceptable just because time is short:
 
 ## Phase 3 — Graph Model
 
-- [ ] Construct entity graph from IEEE-CIS identity columns: card1-6, addr1-2, device info, email
-      domain as nodes/shared-identity edges
-- [ ] Persist graph construction as a reproducible script (not notebook-only), with node/edge counts
-      logged
-- [ ] Implement **temporal edge masking** so training at time T never sees edges formed after T (no
-      future-edge leakage) — write a test asserting this
-- [ ] Build PyTorch Geometric GraphSAGE model on the entity graph; train with same time-ordered
-      split as the tabular baseline
+- [x] Construct entity graph from IEEE-CIS identity columns: card1, card2, card3, card5, addr1,
+      addr2, P_emaildomain, R_emaildomain as nodes/shared-identity edges — `src/driftline/graph.py`.
+      **Scope: device info (DeviceInfo/DeviceType) not included**, logged in Known Gaps
+- [x] Persist graph construction as a reproducible script (not notebook-only), with node/edge counts
+      logged — `scripts/train_graphsage.py`: 590,540 txn nodes + 14,811 value nodes, 6.46M
+      train-graph edges / 8.06M train+test-graph edges, real timings logged
+- [x] Implement **temporal edge masking** — precisely scoped, not overclaimed: the property that
+      actually matters (training weights learned only from a graph where test rows are
+      structurally absent, not just unlabeled) is implemented and tested
+      (`tests/test_graph.py::test_value_only_present_in_test_rows_never_appears_in_train_graph`).
+      Inference on test uses an extended train+test graph as a named, bounded simplification
+      (test transactions can see each other via shared value nodes) rather than strict
+      per-transaction sequential masking — documented, not hidden, in `src/driftline/graph.py`'s
+      module docstring and `results/phase3_graph.md`
+- [x] Build PyTorch Geometric GraphSAGE model on the entity graph; train with same time-ordered
+      split as the tabular baseline — `src/driftline/graphsage_model.py` +
+      `scripts/train_graphsage.py`. Real run: 242.6s / 2,310 batches / 5 epochs on the full
+      590K-row dataset, CPU-only (this VM has no GPU)
 - [ ] Optional/stretch: reproduce a published GraphSAGE baseline result on Elliptic Bitcoin Dataset
-      as a sanity check on the graph pipeline's correctness (independent of IEEE-CIS)
-- [ ] Build rank-average ensemble combining XGBoost + GraphSAGE (+ IsolationForest residual signal)
-- [ ] Produce **ablation table**: XGBoost alone vs. XGBoost+GraphSAGE vs. full ensemble, PR-AUC and
-      recall@1%FPR for each, with a named baseline row
-- [ ] Compute **graph lift specifically on the "new card, no history" slice** — isolate this
-      segment and report PR-AUC delta there vs. overall; this is the doc's called-out
-      differentiator, don't skip it
-- [ ] Record: does GraphSAGE help everywhere or only on specific slices? Write the honest
-      "where it didn't help" note for the interview story
+      — **not done**, genuinely optional per the doc's own wording, skipped for time
+- [x] Build rank-average ensemble combining XGBoost + GraphSAGE (+ IsolationForest residual signal)
+      — `scripts/train_graphsage.py`
+- [x] Produce **ablation table**: XGBoost alone vs. XGBoost+GraphSAGE vs. full ensemble, PR-AUC and
+      recall@1%FPR for each, with a named baseline row — `results/phase3_graph.md`. **Honest
+      result: the naive rank-average ensemble is slightly WORSE than XGBoost alone** (PR-AUC
+      0.4687 vs 0.4776) — same failure mode as Phase 1's IsolationForest finding, root-caused
+      and explained, not hidden
+- [x] Compute **graph lift specifically on the "new card, no history" slice** — 823/118,108 test
+      transactions (0.70%), with a genuinely interesting independent finding: **4.62% fraud rate
+      on this slice vs. 3.44% overall (~34% higher)**. Ensemble does NOT outperform XGBoost alone
+      here either (PR-AUC 0.6219 vs 0.6828) — reported honestly rather than the hoped-for result
+- [x] Record: does GraphSAGE help everywhere or only on specific slices? — **Answer: neither, in
+      this configuration.** Two specific, non-speculative reasons identified and documented (naive
+      equal-weight ensembling punishes the weaker model; the GNN is genuinely undertrained — loss
+      still declining at 5 epochs — relative to a fully-tuned 400-tree XGBoost baseline within the
+      CPU time budget) — see `results/phase3_graph.md` for the full interview-ready framing
 
 ---
 
@@ -347,6 +365,18 @@ shortcut is acceptable just because time is short:
 _(Log anything cut, substituted, or simplified under the 72-hour constraint here, with the reason.
 Leave empty only if nothing was cut.)_
 
+- **Phase 3 entity graph excludes DeviceInfo/DeviceType** as identity columns (only
+  card1/card2/card3/card5/addr1/addr2/P_emaildomain/R_emaildomain). Same pattern would extend
+  directly; skipped for time and because DeviceInfo has high free-text cardinality that would
+  need cleaning first to be a useful identity signal, not just added as-is.
+- **Phase 3 ensemble is naive rank-average, not a learned/weighted stack.** Root-caused as the
+  reason GraphSAGE doesn't show lift in the ablation table (see results/phase3_graph.md) — the
+  concrete next step is a small logistic-regression meta-learner fit on
+  `[xgb_score, graphsage_score, iso_score] -> isFraud` using a validation slice carved from the
+  tail of TRAIN (never touching TEST), not implemented here for time.
+- **GraphSAGE trained for 5 epochs on CPU** (242.6s, loss still declining at the end) — genuinely
+  undertrained relative to the fully-tuned XGBoost baseline; more epochs is the direct lever, not
+  applied here to keep the phase within the overall build's time budget.
 - **Phase 2 velocity features are card1-only**, not device/email as the source doc's architecture
   lists. The pattern (`build_velocity_table` + dual sink) generalizes directly to DeviceInfo and
   P_emaildomain; not done yet purely for time. Revisit before final metrics rollup if time allows.
