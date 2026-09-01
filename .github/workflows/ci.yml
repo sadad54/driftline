@@ -7,7 +7,7 @@ on:
     branches: [master, main]
 
 jobs:
-  lint-and-test:
+  lint-and-unit-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,14 +21,74 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install -e . --no-deps
           pip install ruff
 
       - name: Lint
         run: ruff check src/ tests/ scripts/
 
-      - name: Unit tests (no data required)
-        run: pytest tests/test_data.py -v
+      - name: Unit tests (data-free)
+        run: pytest tests/test_data.py tests/test_graph.py tests/test_leakage_consolidated.py -v
 
-      # Data-dependent tests (leakage/skew/quality-gate on the real dataset) run in a
-      # separate job once the dataset is available as a CI artifact/cache — see Known Gaps
-      # in TASKS.md until that's wired up.
+  feast-contract-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e . --no-deps
+      - name: Feast schema contract test
+        run: pytest tests/test_feast_contract.py -v
+
+  integration-test:
+    runs-on: ubuntu-latest
+    # ubuntu-latest runners ship Docker by default -- no extra service containers needed;
+    # the test itself spins up real Redpanda + Redis via testcontainers.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e . --no-deps
+      - name: testcontainers integration test (real Redpanda + Redis)
+        run: pytest tests/test_integration_streaming.py -v
+
+  onnx-and-quality-gate:
+    runs-on: ubuntu-latest
+    # Uses the small committed CI sample (tests/fixtures/), not the full 590K-row dataset --
+    # the full dataset needs Kaggle credentials and several minutes just to download, which
+    # doesn't belong in every CI run. The real, full-scale results in this repo's results/
+    # directory always come from the complete dataset run on the project's own VM.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e . --no-deps
+      - name: ONNX export + parity check (CI sample)
+        run: python scripts/export_onnx.py --fixture
+      - name: PR-AUC quality gate (fails if regressed >1% absolute vs. baseline)
+        run: python scripts/ci_quality_gate.py
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build scorer image
+        run: docker build -f serving/Dockerfile -t driftline-scorer:ci .
