@@ -1,0 +1,10 @@
+# Minimal shared base for CI jobs -- deliberately NOT the full requirements.txt.
+# Installing the full file (torch's default CUDA build alone pulls several GB of
+# nvidia-cublas/cudnn/cufft/etc. that a CPU-only CI runner never uses, plus mlflow, evidently,
+# dask, kaggle regardless of whether the job needs them) exhausted GitHub Actions runners' disk
+# ("No space left on device") -- found by running CI, not assumed. Each job installs this core
+# plus only its own extra dependencies; torch is installed separately from the CPU wheel index.
+pandas==2.2.2
+numpy==1.26.4
+pyarrow>=15.0.0
+pytest>=8.2.0

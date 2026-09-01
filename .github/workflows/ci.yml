@@ -11,22 +11,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
-
-      - name: Install dependencies
+      - name: Install dependencies (core + CPU-only torch -- no CUDA wheels, tests/test_graph.py needs torch but not torch_geometric)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-ci-core.txt
+          pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
           pip install -e . --no-deps
           pip install ruff
-
       - name: Lint
         run: ruff check src/ tests/ scripts/
-
       - name: Unit tests (data-free)
         run: pytest tests/test_data.py tests/test_graph.py tests/test_leakage_consolidated.py -v
 
@@ -38,10 +35,11 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Install dependencies
+      - name: Install dependencies (core + feast only)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-ci-core.txt
+          pip install feast>=0.40.0
           pip install -e . --no-deps
       - name: Feast schema contract test
         run: pytest tests/test_feast_contract.py -v
@@ -56,10 +54,11 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Install dependencies
+      - name: Install dependencies (core + kafka/redis/testcontainers only)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-ci-core.txt
+          pip install kafka-python>=2.0.2 redis>=5.0.0 testcontainers>=4.4.0 docker>=7.0.0
           pip install -e . --no-deps
       - name: testcontainers integration test (real Redpanda + Redis)
         run: pytest tests/test_integration_streaming.py -v
@@ -76,10 +75,11 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Install dependencies
+      - name: Install dependencies (core + xgboost/onnx only)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-ci-core.txt
+          pip install scikit-learn==1.4.2 xgboost==2.0.3 onnx>=1.16.0 onnxruntime>=1.17.0 onnxmltools>=1.12.0
           pip install -e . --no-deps
       - name: ONNX export + parity check (CI sample)
         run: python scripts/export_onnx.py --fixture
