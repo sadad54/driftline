@@ -91,8 +91,14 @@ def train_numeric_serving_variant(train, test, cols):
         scale_pos_weight=(train["isFraud"] == 0).sum() / (train["isFraud"] == 1).sum(),
         n_jobs=-1, random_state=0,
     )
-    model.fit(train_enc.fillna(-1), train["isFraud"])
-    native_scores = model.predict_proba(test_enc.fillna(-1))[:, 1]
+    # Fit on a plain numpy array, not the DataFrame: fitting on a DataFrame makes XGBoost store
+    # the real pandas column names (e.g. 'V258') as its internal feature_names, which
+    # onnxmltools' converter can't parse (it expects the default 'f0','f1',... pattern XGBoost
+    # uses when it has no column names to go on). Found via the RuntimeError this produced.
+    X_train_np = train_enc.fillna(-1).to_numpy(dtype=np.float32)
+    X_test_np = test_enc.fillna(-1).to_numpy(dtype=np.float32)
+    model.fit(X_train_np, train["isFraud"])
+    native_scores = model.predict_proba(X_test_np)[:, 1]
 
     onnx_model = convert_xgboost(
         model.get_booster(), initial_types=[("input", FloatTensorType([None, len(cols)]))]
@@ -103,8 +109,7 @@ def train_numeric_serving_variant(train, test, cols):
     print(f"  ONNX serving model written to {onnx_path}")
 
     sess = ort.InferenceSession(str(onnx_path))
-    X_test = test_enc.fillna(-1).astype(np.float32).to_numpy()
-    onnx_scores = sess.run(None, {"input": X_test})[1][:, 1]
+    onnx_scores = sess.run(None, {"input": X_test_np})[1][:, 1]
 
     max_diff = np.abs(onnx_scores - native_scores).max()
     pr_auc_native = average_precision_score(test["isFraud"], native_scores)
