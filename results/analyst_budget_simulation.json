@@ -1,0 +1,34 @@
+{
+  "0.5%_budget": {
+    "mean_daily_volume": 2812.095238095238,
+    "mean_k_per_day": 14.06047619047619,
+    "mean_precision_at_k": 0.8772961530950253,
+    "min_precision_at_k": 0.26666666666666666,
+    "max_precision_at_k": 1.0,
+    "n_days": 42
+  },
+  "1.0%_budget": {
+    "mean_daily_volume": 2812.095238095238,
+    "mean_k_per_day": 28.12095238095238,
+    "mean_precision_at_k": 0.7560590927783797,
+    "min_precision_at_k": 0.3333333333333333,
+    "max_precision_at_k": 1.0,
+    "n_days": 42
+  },
+  "2.0%_budget": {
+    "mean_daily_volume": 2812.095238095238,
+    "mean_k_per_day": 56.24190476190476,
+    "mean_precision_at_k": 0.5960773463621977,
+    "min_precision_at_k": 0.32786885245901637,
+    "max_precision_at_k": 1.0,
+    "n_days": 42
+  },
+  "5.0%_budget": {
+    "mean_daily_volume": 2812.095238095238,
+    "mean_k_per_day": 140.60476190476192,
+    "mean_precision_at_k": 0.3713950622002823,
+    "min_precision_at_k": 0.16911764705882354,
+    "max_precision_at_k": 0.5808823529411765,
+    "n_days": 42
+  }
+}
