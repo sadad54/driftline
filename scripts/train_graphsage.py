@@ -25,9 +25,9 @@ from driftline.graphsage_model import EntitySAGE
 
 RESULTS_PATH = Path(__file__).resolve().parent.parent / "results" / "graphsage_results.json"
 
-HIDDEN_DIM = 32
-EPOCHS = 1
-NEIGHBOR_FANOUT = [10, 10]
+HIDDEN_DIM = 64
+EPOCHS = 5
+NEIGHBOR_FANOUT = [15, 10]
 BATCH_SIZE = 1024
 LR = 0.005
 
