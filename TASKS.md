@@ -332,27 +332,24 @@ shortcut is acceptable just because time is short:
 
 ## Phase 7 — Deliverables & Wrap-up
 
-- [ ] Consolidate all measured metrics into one `metrics/` artifact (JSON + rendered table), each
-      tied to the run/commit that produced it:
-  - [ ] PR-AUC and ROC-AUC, time-ordered holdout vs. XGBoost baseline
-  - [ ] Recall@1%FPR
-  - [ ] Precision@k (k = chosen analyst review budget)
-  - [ ] Performance-decay curve: PR-AUC month 1 → month 6, untreated vs. with drift-triggered
-        retrain, both endpoints + recovered delta
-  - [ ] PSI per feature per week, and count of features crossing 0.2 before retrain fired
-  - [ ] Graph lift: ensemble vs. XGBoost-alone PR-AUC, overall and on the no-history-card slice
-  - [ ] Throughput and latency: sustained events/sec, p50/p95/p99 end-to-end, with stated EC2
-        hardware spec
-  - [ ] Feature freshness lag, p99
-  - [ ] Training-serving skew: max absolute offline/online feature difference, and the bug story
-- [ ] Fill in every `[x]` placeholder in the resume bullets below with real measured numbers only:
-  - [ ] "computing... velocity features into a Feast online store at *[x]* ms p99 freshness lag and
-        sustaining *[x]* events/sec"
-  - [ ] "raising PR-AUC from *[x]* to *[x]* and recall at 1% FPR from *[x]* to *[x]*"
-  - [ ] "measured PR-AUC decay from *[x]* (month 1) to *[x]* (month 6) untreated and recovered *[x]*
-        of it"
-  - [ ] "CI quality gate blocking any model regression above 1% PR-AUC" — confirm this is literally
-        true of the CI config, not aspirational
+- [x] Consolidate all measured metrics into one `metrics/` artifact (JSON + rendered table) —
+      `metrics/summary.json` + `metrics/README.md`, every number sourced from a committed
+      `results/*.json` with provenance tracked. Covers: PR-AUC/ROC-AUC/recall@1%FPR (baseline vs.
+      ensemble), precision@k across 4 analyst-budget scenarios, the decay curve (untreated vs.
+      drift-triggered-retrain recovery), PSI/KS weekly monitoring, graph lift (overall + no-history
+      slice), serving throughput/latency (docker-compose Locust + k3d HPA test), and feature
+      freshness lag p50/p95/p99
+  - [x] Training-serving skew: 240/2,772 (8.66%) mismatches, real bug story documented
+        (Parquet-buffer vs. real-time-Redis write-path divergence)
+- [x] Fill in every `[x]` placeholder in the resume bullets with real measured numbers —
+      **and rewrite, not just fill, the two bullets whose original template claim didn't match
+      what actually happened**: freshness lag is real SECONDS (14.7-25.6s), not ms as the
+      template assumed; the ensemble did NOT raise PR-AUC (it's slightly worse — the honest
+      ablation finding replaces the assumed "raising PR-AUC" framing); "Evidently" and "Airflow"
+      are not used (documented substitutions — manual PSI/KS, a lightweight Python orchestration
+      loop) so removed from the bullets rather than claimed; quality-gate tolerance is 2%, not
+      the assumed 1% (widened with documented justification, see results/phase6_production.md).
+      Final bullets are below, in the resume-ready section
 - [ ] Write README: lead with the six-month drift curve chart, state the real-vs-simulated framing
       up front, architecture diagram, metrics table, runbook, how to reproduce
 - [ ] Record demo video: replay running end-to-end, Grafana dashboard live, drift curve, a
@@ -369,6 +366,36 @@ shortcut is acceptable just because time is short:
   - [ ] "Tell me about a time your metrics lied to you." → random-split vs. time-split story
 - [ ] Update resume/portfolio: replace the old static creditcard.csv/SMOTE fraud notebook entry
       with the Driftline entry (see Definition of Done)
+
+---
+
+## Resume Bullets (Final)
+
+**Driftline — Real-Time Fraud Detection Platform** (2026)
+- Built a streaming fraud pipeline replaying 590,540 IEEE-CIS transactions in event-time order
+  through Redpanda and PyFlink, computing sliding-window card-velocity features into a Feast
+  online store at 25.6s p99 freshness lag and sustaining ~180 events/sec on a 4-vCPU node; found
+  and fixed 5 real pipeline bugs along the way (Parquet-durability under ungraceful shutdown, a
+  silently-dropped timestamp column, an orphaned JVM process, a node-id collision in the entity
+  graph, and stale consumer-group offsets across topic recreation).
+- Built a PyTorch Geometric GraphSAGE model over a shared-identity entity graph (605K nodes) with
+  a tested train/test leakage boundary, ensembled with an XGBoost baseline (PR-AUC 0.4751,
+  time-ordered holdout, 118K transactions). Ran the full honest ablation and found the naive
+  rank-average ensemble underperforms XGBoost alone — root-caused to unweighted averaging and
+  GNN undertraining, not hidden — with a genuine independent finding that new-card transactions
+  carry a 34% higher fraud rate than average.
+- Instrumented weekly PSI/KS drift monitoring across 369 features; measured real PR-AUC decay
+  from 0.4761 (first held-out month) to 0.3680 (month 6) untreated, and recovered a
+  production-style performance collapse from 0.2635 to 0.5211 (+97.8% relative) within one week
+  via a drift-triggered retrain with causal shadow-scoring and an enforced promotion gate (2/2
+  real retrains promoted, logged to MLflow).
+- Shipped the scorer as ONNX behind FastAPI on Kubernetes (k3d) with Prometheus/Grafana
+  observability, a 3-test testcontainers streaming integration suite, and a 5-job CI pipeline
+  (unit, Feast contract, integration, ONNX parity, PR-AUC quality gate) — all green. Load-tested
+  to a real HPA scale event (2→4 replicas), which also surfaced a genuine liveness-probe
+  starvation bug under sustained load.
+
+_(Full numbers and provenance for every claim above: `metrics/README.md`.)_
 
 ---
 
