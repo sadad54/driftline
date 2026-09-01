@@ -65,9 +65,16 @@ def build_graph_edges(df: pd.DataFrame, vocab: ValueNodeVocab, id_columns: list[
     """Build a bidirectional edge_index for the transactions in `df` (positionally indexed 0..n-1
     as transaction node ids) against the given (pre-fit) value-node vocabulary.
 
+    Value-node global ids are OFFSET by len(df) -- vocab.lookup() returns raw ids in [0, V), which
+    would otherwise collide with transaction node ids [0, len(df)) (e.g. txn node 5 and value
+    node 5 would be the same graph node, corrupting message passing). Global node numbering for
+    the graph this function returns edges for is therefore: transactions [0, len(df)), value
+    nodes [len(df), len(df) + len(vocab)).
+
     Returns edge_index as a [2, E] int64 tensor (already made undirected -- both directions
     present, which is what PyG's SAGEConv expects for symmetric neighbor aggregation).
     """
+    num_txn = len(df)
     src, dst = [], []
     for col in id_columns:
         col_vals = df[col].to_numpy()
@@ -78,7 +85,7 @@ def build_graph_edges(df: pd.DataFrame, vocab: ValueNodeVocab, id_columns: list[
             if value_node_id is None:
                 continue
             src.append(txn_idx)
-            dst.append(value_node_id)
+            dst.append(num_txn + value_node_id)
 
     txn_to_value = torch.tensor([src, dst], dtype=torch.long)
     value_to_txn = torch.tensor([dst, src], dtype=torch.long)

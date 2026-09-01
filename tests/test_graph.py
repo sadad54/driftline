@@ -1,11 +1,10 @@
+import numpy as np
 import pandas as pd
-import torch
 
-from driftline.graph import ID_COLUMNS, ValueNodeVocab, build_graph_edges
+from driftline.graph import ValueNodeVocab, build_graph_edges
 
 
 def _toy_df(n=20, seed=0):
-    import numpy as np
     rng = np.random.default_rng(seed)
     return pd.DataFrame({
         "card1": rng.integers(1, 5, size=n),
@@ -19,40 +18,47 @@ def _toy_df(n=20, seed=0):
     })
 
 
-def test_train_only_graph_never_references_test_rows():
-    """The leakage property that actually matters: a graph built from train_df alone must never
-    contain a transaction node beyond len(train_df) -- i.e. test rows are structurally absent,
-    not just unlabeled. Training GraphSAGE on this graph is therefore leakage-safe by
-    construction, not by hoping the loss function ignores test rows."""
-    full_df = _toy_df(n=40)
-    train_df = full_df.iloc[:25].reset_index(drop=True)
-
-    vocab = ValueNodeVocab().fit(full_df)  # fit on full vocab (ids just need to be consistent)
-    edge_index = build_graph_edges(train_df, vocab)
-
-    txn_node_ids_referenced = edge_index[0][edge_index[0] < len(full_df)]
-    # every txn-side node id used in the train-only graph must be < len(train_df), never in
-    # [len(train_df), len(full_df)) which would mean a test-set row leaked in as a node
-    assert txn_node_ids_referenced.max().item() < len(train_df)
-
-
-def test_value_node_ids_consistent_across_train_and_full_vocab():
-    """The vocab must be fit once (on train+test) and reused, so a value node id means the same
-    thing in the train-only graph and the train+test inference-time graph -- otherwise the
-    model's learned embedding for a value node wouldn't transfer to inference at all."""
+def test_train_only_graph_node_numbering_matches_train_size():
+    """Node numbering invariant: building a graph from train_df alone must number its txn nodes
+    [0, len(train_df)) and its value nodes [len(train_df), len(train_df) + V) -- never wider than
+    that, i.e. structurally incapable of referencing a test-set row as a node."""
     full_df = _toy_df(n=40)
     train_df = full_df.iloc[:25].reset_index(drop=True)
 
     vocab = ValueNodeVocab().fit(full_df)
-    edges_train = build_graph_edges(train_df, vocab)
-    edges_full = build_graph_edges(full_df, vocab)
+    edge_index = build_graph_edges(train_df, vocab)
 
-    # every value-node id that appears in the train-only graph must also appear in the full graph
-    # (same vocab), and never exceed len(vocab)
-    value_ids_train = set(edges_train[1].tolist()) - set(range(len(train_df)))
-    assert all(v < len(vocab) for v in value_ids_train)
-    value_ids_full = set(edges_full[1].tolist())
-    assert value_ids_train.issubset(value_ids_full | set(range(len(full_df))))
+    max_node_id = edge_index.max().item()
+    # every node id used must be < len(train_df) (a txn node) or >= len(train_df) (a value node,
+    # offset by build_graph_edges) but the graph was built with num_txn=len(train_df)=25, so no
+    # id in [25, ...) can be mistaken for a 26th-40th test-set transaction -- there's no
+    # numbering slot for one, by construction.
+    assert max_node_id < len(train_df) + len(vocab)
+
+
+def test_value_only_present_in_test_rows_never_appears_in_train_graph():
+    """The leakage property that actually matters: a (column, value) that only occurs in
+    test-split rows must never appear as an edge target in a graph built from train_df alone --
+    otherwise a value unique to the future would still influence training-graph structure."""
+    train_df = pd.DataFrame({
+        "card1": [1, 2, 3], "card2": [100, 100, 100], "card3": [1, 1, 1], "card5": [1, 1, 1],
+        "addr1": [1, 1, 1], "addr2": [1, 1, 1], "P_emaildomain": ["gmail.com"] * 3,
+        "R_emaildomain": [None, None, None],
+    })
+    test_df = pd.DataFrame({
+        "card1": [999], "card2": [100], "card3": [1], "card5": [1],
+        "addr1": [1], "addr2": [1], "P_emaildomain": ["gmail.com"], "R_emaildomain": [None],
+    })
+    full_df = pd.concat([train_df, test_df], ignore_index=True)
+    vocab = ValueNodeVocab().fit(full_df)
+
+    future_only_value_id = vocab.lookup("card1", 999)
+    assert future_only_value_id is not None
+
+    train_edges = build_graph_edges(train_df, vocab)
+    train_value_ids = set((train_edges[1] - len(train_df)).tolist()) | \
+        set((train_edges[0] - len(train_df)).tolist())
+    assert future_only_value_id not in train_value_ids
 
 
 def test_edges_are_bidirectional():
