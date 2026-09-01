@@ -32,12 +32,20 @@ def redpanda_container():
     from testcontainers.core.container import DockerContainer
     from testcontainers.core.waiting_utils import wait_for_logs
 
+    # Fixed host port (not with_exposed_ports' random mapping): Redpanda advertises a literal
+    # address back to clients after the initial bootstrap connection, so the advertised port and
+    # the actual host-mapped port must be the SAME fixed number, or every connection after the
+    # first metadata fetch fails with ECONNREFUSED (found by running this test, not assumed --
+    # a real, well-known testcontainers+Kafka/Redpanda gotcha). Port 19093 to avoid clashing with
+    # the docker-compose Redpanda already running on 19092.
+    host_port = 19093
     container = DockerContainer("redpandadata/redpanda:v24.2.7").with_command(
         "redpanda start --smp=1 --memory=512M --reserve-memory=0M --overprovisioned "
-        "--node-id=0 --check=false --kafka-addr=0.0.0.0:9092 --advertise-kafka-addr=localhost:9092"
-    ).with_exposed_ports(9092)
+        f"--node-id=0 --check=false --kafka-addr=0.0.0.0:9092 --advertise-kafka-addr=localhost:{host_port}"
+    ).with_bind_ports(9092, host_port)
     container.start()
     wait_for_logs(container, "Successfully started Redpanda", timeout=60)
+    container.host_port = host_port
     yield container
     container.stop()
 
@@ -56,7 +64,7 @@ def test_produce_and_consume_real_events(redpanda_container):
     from kafka import KafkaConsumer, KafkaProducer
     from kafka.admin import KafkaAdminClient, NewTopic
 
-    bootstrap = f"localhost:{redpanda_container.get_exposed_port(9092)}"
+    bootstrap = f"localhost:{redpanda_container.host_port}"
 
     admin = KafkaAdminClient(bootstrap_servers=bootstrap)
     admin.create_topics([NewTopic(name="test.transactions", num_partitions=3, replication_factor=1)])
@@ -119,7 +127,7 @@ def test_scored_events_carry_correct_features_end_to_end(redpanda_container, red
     from kafka import KafkaConsumer, KafkaProducer
     from kafka.admin import KafkaAdminClient, NewTopic
 
-    bootstrap = f"localhost:{redpanda_container.get_exposed_port(9092)}"
+    bootstrap = f"localhost:{redpanda_container.host_port}"
     admin = KafkaAdminClient(bootstrap_servers=bootstrap)
     admin.create_topics([NewTopic(name="test.scored", num_partitions=1, replication_factor=1)])
     admin.close()
