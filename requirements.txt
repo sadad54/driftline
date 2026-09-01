@@ -9,6 +9,13 @@ scikit-learn==1.4.2
 xgboost==2.0.3
 torch==2.10.0
 torch-geometric>=2.5.0
+# pyg-lib needs the PyG wheel index, not plain pip -- install separately:
+#   pip install pyg-lib -f https://data.pyg.org/whl/torch-2.10.0+cpu.html
+# (required for NeighborLoader's accelerated sampling; without it PyG falls back to an
+# unsupported pure-Python sampler that raises ImportError)
+
+# Streaming (installed separately on the VM, needs Java 11 -- see streaming/download_jars.sh)
+# apache-flink
 
 # Serving
 fastapi==0.111.0
