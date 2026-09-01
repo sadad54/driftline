@@ -9,12 +9,14 @@ needed -- and reports whichever is actually true rather than assuming either way
 """
 from __future__ import annotations
 
+import argparse
 import json
 import time
 from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
+import pandas as pd
 from onnxmltools.convert import convert_xgboost
 from onnxmltools.convert.common.data_types import FloatTensorType
 
@@ -22,11 +24,23 @@ from driftline.baseline import train_xgboost
 from driftline.data import feature_columns, load_ieee_cis, time_ordered_split
 
 MODEL_DIR = Path(__file__).resolve().parent.parent / "models" / "artifacts"
+FIXTURE_PATH = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "ieee_cis_ci_sample.parquet"
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--fixture", action="store_true",
+                         help="use the small committed CI sample instead of the full dataset (for CI)")
+    args = parser.parse_args()
+
     print("Loading data and training XGBoost (Phase 1 split)...")
-    df = load_ieee_cis()
+    if args.fixture:
+        df = pd.read_parquet(FIXTURE_PATH)
+        for col in df.columns:
+            if df[col].dtype == object:
+                df[col] = df[col].astype("category")
+    else:
+        df = load_ieee_cis()
     train, test = time_ordered_split(df, test_frac=0.2)
     cols = feature_columns(df)
 

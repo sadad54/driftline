@@ -14,6 +14,7 @@ data/processed/*
 !data/raw/README.md
 !data/processed/.gitkeep
 *.parquet
+!tests/fixtures/*.parquet
 *.csv
 models/artifacts/
 *.pt
