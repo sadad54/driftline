@@ -19,12 +19,24 @@ from typing import Optional
 
 import numpy as np
 import onnxruntime as ort
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 
 MODEL_DIR = Path(__file__).resolve().parent.parent / "models" / "artifacts"
 
 app = FastAPI(title="Driftline Fraud Scoring Service")
+
+SCORE_REQUESTS = Counter("driftline_score_requests_total", "Total /score requests")
+SCORE_LATENCY = Histogram(
+    "driftline_score_latency_seconds", "End-to-end /score handler latency",
+    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0),
+)
+VELOCITY_HIT = Counter("driftline_velocity_feature_hits_total", "Requests where Feast velocity features were available")
+FRAUD_SCORE = Histogram(
+    "driftline_fraud_score", "Distribution of returned fraud scores",
+    buckets=(0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1.0),
+)
 
 _session: Optional[ort.InferenceSession] = None
 _preprocessing: Optional[dict] = None
@@ -107,10 +119,21 @@ def score(txn: Transaction):
     probs = _session.run(None, {"input": x})[1]
     fraud_score = float(probs[0][1])
 
-    latency_ms = (time.perf_counter() - t0) * 1000
-    return ScoreResponse(fraud_score=fraud_score, latency_ms=latency_ms, velocity_features_available=velocity_used)
+    elapsed = time.perf_counter() - t0
+    SCORE_REQUESTS.inc()
+    SCORE_LATENCY.observe(elapsed)
+    FRAUD_SCORE.observe(fraud_score)
+    if velocity_used:
+        VELOCITY_HIT.inc()
+
+    return ScoreResponse(fraud_score=fraud_score, latency_ms=elapsed * 1000, velocity_features_available=velocity_used)
 
 
 @app.get("/health")
 def health():
     return {"status": "ok", "model_loaded": _session is not None}
+
+
+@app.get("/metrics")
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
