@@ -1,0 +1,117 @@
+{
+  "n_weeks": 26,
+  "promotion_tolerance": 0.02,
+  "min_weeks_between_retrains": 2,
+  "weekly_curve": {
+    "week_4": {
+      "pr_auc_with_retraining": 0.5913406738794452,
+      "n_rows": 24539
+    },
+    "week_5": {
+      "pr_auc_with_retraining": 0.4629097071983316,
+      "n_rows": 20919
+    },
+    "week_6": {
+      "pr_auc_with_retraining": 0.45931746747337776,
+      "n_rows": 20564
+    },
+    "week_7": {
+      "pr_auc_with_retraining": 0.4274896009018413,
+      "n_rows": 19761
+    },
+    "week_8": {
+      "pr_auc_with_retraining": 0.41658071029318666,
+      "n_rows": 21432
+    },
+    "week_9": {
+      "pr_auc_with_retraining": 0.38961964375390934,
+      "n_rows": 22534
+    },
+    "week_10": {
+      "pr_auc_with_retraining": 0.3789252931941408,
+      "n_rows": 20953
+    },
+    "week_11": {
+      "pr_auc_with_retraining": 0.34867690669968404,
+      "n_rows": 20175
+    },
+    "week_12": {
+      "pr_auc_with_retraining": 0.35711866864626474,
+      "n_rows": 22391
+    },
+    "week_13": {
+      "pr_auc_with_retraining": 0.2947486207967051,
+      "n_rows": 27429
+    },
+    "week_14": {
+      "pr_auc_with_retraining": 0.26352213932510343,
+      "n_rows": 21269
+    },
+    "week_15": {
+      "pr_auc_with_retraining": 0.5210754351317927,
+      "n_rows": 20891
+    },
+    "week_16": {
+      "pr_auc_with_retraining": 0.5412295920540898,
+      "n_rows": 21078
+    },
+    "week_17": {
+      "pr_auc_with_retraining": 0.5904464729684099,
+      "n_rows": 23575
+    },
+    "week_18": {
+      "pr_auc_with_retraining": 0.431608218282605,
+      "n_rows": 19258
+    },
+    "week_19": {
+      "pr_auc_with_retraining": 0.4282728288179378,
+      "n_rows": 18572
+    },
+    "week_20": {
+      "pr_auc_with_retraining": 0.3663127840037498,
+      "n_rows": 18549
+    },
+    "week_21": {
+      "pr_auc_with_retraining": 0.4721770040764065,
+      "n_rows": 21443
+    },
+    "week_22": {
+      "pr_auc_with_retraining": 0.4064610783727074,
+      "n_rows": 19811
+    },
+    "week_23": {
+      "pr_auc_with_retraining": 0.4136842183519363,
+      "n_rows": 21038
+    },
+    "week_24": {
+      "pr_auc_with_retraining": 0.45970020687788715,
+      "n_rows": 19941
+    },
+    "week_25": {
+      "pr_auc_with_retraining": 0.4810591031330743,
+      "n_rows": 17752
+    }
+  },
+  "retrain_events": [
+    {
+      "trigger_week": 14,
+      "n_features_breach": 23,
+      "n_train_rows": 193572,
+      "candidate_shadow_pr_auc": 0.48020052673907415,
+      "serving_shadow_pr_auc": 0.2810550183991811,
+      "regression": -0.19914550833989303,
+      "promoted": true
+    },
+    {
+      "trigger_week": 24,
+      "n_features_breach": 35,
+      "n_train_rows": 163324,
+      "candidate_shadow_pr_auc": 0.5060816788587498,
+      "serving_shadow_pr_auc": 0.4358170636668075,
+      "regression": -0.07026461519194227,
+      "promoted": true
+    }
+  ],
+  "n_retrains_triggered": 2,
+  "n_retrains_promoted": 2
+}

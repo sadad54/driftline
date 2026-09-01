@@ -1,0 +1,208 @@
+{
+  "n_weeks": 26,
+  "retrain_threshold_psi": 0.2,
+  "retrain_trigger_n_features": 20,
+  "first_trigger_week": 2,
+  "weekly": {
+    "week_1": {
+      "n_rows": 28463,
+      "n_features_psi_breach": 14,
+      "mean_psi": 0.149660524217717,
+      "max_psi": 4.81053171972456,
+      "max_psi_feature": "V160",
+      "mean_ks": 0.033639781561327194
+    },
+    "week_2": {
+      "n_rows": 35701,
+      "n_features_psi_breach": 30,
+      "mean_psi": 0.19314167432250134,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.05363709255411717
+    },
+    "week_3": {
+      "n_rows": 34906,
+      "n_features_psi_breach": 33,
+      "mean_psi": 0.3029321470288188,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.06962288391786446
+    },
+    "week_4": {
+      "n_rows": 24539,
+      "n_features_psi_breach": 25,
+      "mean_psi": 0.28420024278550815,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.05458777379171836
+    },
+    "week_5": {
+      "n_rows": 20919,
+      "n_features_psi_breach": 25,
+      "mean_psi": 0.29453297866233896,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.05443170672061428
+    },
+    "week_6": {
+      "n_rows": 20564,
+      "n_features_psi_breach": 25,
+      "mean_psi": 0.2869392848060327,
+      "max_psi": 5.089979025825647,
+      "max_psi_feature": "V143",
+      "mean_ks": 0.05553135885371614
+    },
+    "week_7": {
+      "n_rows": 19761,
+      "n_features_psi_breach": 25,
+      "mean_psi": 0.2964628635211222,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.05955286088202985
+    },
+    "week_8": {
+      "n_rows": 21432,
+      "n_features_psi_breach": 25,
+      "mean_psi": 0.33202028081145685,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.056616928062409484
+    },
+    "week_9": {
+      "n_rows": 22534,
+      "n_features_psi_breach": 25,
+      "mean_psi": 0.2949513657012272,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.060456463993138004
+    },
+    "week_10": {
+      "n_rows": 20953,
+      "n_features_psi_breach": 23,
+      "mean_psi": 0.311575762915276,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.060359667204067026
+    },
+    "week_11": {
+      "n_rows": 20175,
+      "n_features_psi_breach": 25,
+      "mean_psi": 0.3103767774471583,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.06255164377654766
+    },
+    "week_12": {
+      "n_rows": 22391,
+      "n_features_psi_breach": 25,
+      "mean_psi": 0.3103590858897512,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.06384436961515805
+    },
+    "week_13": {
+      "n_rows": 27429,
+      "n_features_psi_breach": 25,
+      "mean_psi": 0.313614855673939,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.058504420340039186
+    },
+    "week_14": {
+      "n_rows": 21269,
+      "n_features_psi_breach": 21,
+      "mean_psi": 0.3186110190017276,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.056635673013752774
+    },
+    "week_15": {
+      "n_rows": 20891,
+      "n_features_psi_breach": 25,
+      "mean_psi": 0.31562960529552586,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.06745260158007098
+    },
+    "week_16": {
+      "n_rows": 21078,
+      "n_features_psi_breach": 28,
+      "mean_psi": 0.31317447327577813,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.06973175578587679
+    },
+    "week_17": {
+      "n_rows": 23575,
+      "n_features_psi_breach": 25,
+      "mean_psi": 0.3159442558778889,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.05922248357342534
+    },
+    "week_18": {
+      "n_rows": 19258,
+      "n_features_psi_breach": 21,
+      "mean_psi": 0.3102285183176593,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.05311051935336563
+    },
+    "week_19": {
+      "n_rows": 18572,
+      "n_features_psi_breach": 21,
+      "mean_psi": 0.31154086581592244,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.05402948529199373
+    },
+    "week_20": {
+      "n_rows": 18549,
+      "n_features_psi_breach": 21,
+      "mean_psi": 0.32074013566948273,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.05684145534247569
+    },
+    "week_21": {
+      "n_rows": 21443,
+      "n_features_psi_breach": 25,
+      "mean_psi": 0.3174039830671716,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.06367288435045863
+    },
+    "week_22": {
+      "n_rows": 19811,
+      "n_features_psi_breach": 25,
+      "mean_psi": 0.29611011781941765,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.05973595925327943
+    },
+    "week_23": {
+      "n_rows": 21038,
+      "n_features_psi_breach": 16,
+      "mean_psi": 0.262460332328131,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.08184346280796863
+    },
+    "week_24": {
+      "n_rows": 19941,
+      "n_features_psi_breach": 32,
+      "mean_psi": 0.28643715797288566,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.09653059177538988
+    },
+    "week_25": {
+      "n_rows": 17752,
+      "n_features_psi_breach": 25,
+      "mean_psi": 0.2749682876822128,
+      "max_psi": 5.944045290984604,
+      "max_psi_feature": "V152",
+      "mean_ks": 0.07029232589429776
+    }
+  }
+}
