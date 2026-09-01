@@ -9,6 +9,7 @@ needed -- and reports whichever is actually true rather than assuming either way
 """
 from __future__ import annotations
 
+import json
 import time
 from pathlib import Path
 
@@ -79,9 +80,11 @@ def train_numeric_serving_variant(train, test, cols):
 
     train_enc = train[cols].copy()
     test_enc = test[cols].copy()
+    category_maps = {}  # persisted so the serving service can reproduce this exact encoding
     for col in cols:
         if str(train[col].dtype) == "category":
             cats = train[col].cat.categories
+            category_maps[col] = cats.tolist()
             train_enc[col] = train[col].cat.codes.astype("float32")
             test_enc[col] = test[col].astype(pd.CategoricalDtype(categories=cats)).cat.codes.astype("float32")
 
@@ -107,6 +110,11 @@ def train_numeric_serving_variant(train, test, cols):
     with open(onnx_path, "wb") as f:
         f.write(onnx_model.SerializeToString())
     print(f"  ONNX serving model written to {onnx_path}")
+
+    preprocessing = {"feature_columns": cols, "category_maps": category_maps}
+    with open(MODEL_DIR / "serving_preprocessing.json", "w") as f:
+        json.dump(preprocessing, f, indent=2)
+    print(f"  preprocessing metadata written to {MODEL_DIR / 'serving_preprocessing.json'}")
 
     sess = ort.InferenceSession(str(onnx_path))
     onnx_scores = sess.run(None, {"input": X_test_np})[1][:, 1]
