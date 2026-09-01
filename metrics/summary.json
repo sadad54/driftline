@@ -1,0 +1,126 @@
+{
+  "_meta": {
+    "note": "Every number here is sourced from a committed results/*.json file, produced by a real, reproducible script run on the full 590,540-row IEEE-CIS dataset unless stated otherwise. Re-run any of the referenced scripts to reproduce.",
+    "hardware": "GCP e2-standard-4 (4 vCPU, 16GB RAM), CPU-only, no GPU",
+    "sources": {
+      "baseline": "results/baseline_metrics.json (scripts/run_baseline.py)",
+      "random_vs_time_split": "results/random_vs_time_split.json (scripts/random_vs_time_split.py)",
+      "graphsage": "results/graphsage_results.json (scripts/train_graphsage.py)",
+      "decay_curve": "results/decay_curve.json (scripts/decay_curve.py)",
+      "drift_monitoring": "results/drift_monitoring.json (scripts/drift_monitoring.py)",
+      "drift_triggered_retrain": "results/drift_triggered_retrain.json (scripts/drift_triggered_retrain.py)",
+      "analyst_budget": "results/analyst_budget_simulation.json (scripts/analyst_budget_simulation.py)"
+    }
+  },
+  "model_quality": {
+    "xgboost_baseline": {
+      "pr_auc": 0.4751,
+      "roc_auc": 0.8892,
+      "recall_at_1pct_fpr": 0.3760,
+      "precision_at_k_1181": 0.8163,
+      "n_test": 118108
+    },
+    "graphsage_alone": {
+      "pr_auc": 0.2452,
+      "roc_auc": 0.8393,
+      "recall_at_1pct_fpr": 0.2227,
+      "note": "underperforms XGBoost -- 5 epochs on CPU, undertrained relative to a fully-tuned baseline; see results/phase3_graph.md"
+    },
+    "xgboost_plus_graphsage_ensemble": {
+      "pr_auc": 0.4687,
+      "roc_auc": 0.8894,
+      "recall_at_1pct_fpr": 0.3765,
+      "note": "naive rank-average is slightly WORSE than XGBoost alone -- honest finding, not hidden; root cause is unweighted ensembling of models of unequal quality (same failure mode as isolation_forest_ensemble below)"
+    },
+    "isolation_forest_ensemble": {
+      "pr_auc": 0.4269,
+      "note": "also worse than XGBoost alone -- IsolationForest's top-ranked anomalies had 0.0 precision@k at default hyperparameters"
+    },
+    "no_history_card_slice": {
+      "n": 823,
+      "fraud_rate": 0.0462,
+      "fraud_rate_overall_comparison": 0.0344,
+      "xgboost_alone_pr_auc": 0.6828,
+      "ensemble_pr_auc": 0.6219,
+      "note": "new-card fraud rate is ~34% higher than overall -- a genuine independent finding; ensemble still doesn't beat XGBoost alone here either"
+    }
+  },
+  "metrics_lied_to_you": {
+    "time_ordered_split_pr_auc": 0.4751,
+    "random_split_pr_auc": 0.6974,
+    "pr_auc_inflation": 0.2222,
+    "recall_at_1pct_fpr_time_ordered": 0.3760,
+    "recall_at_1pct_fpr_random": 0.6175,
+    "recall_inflation": 0.2415
+  },
+  "drift": {
+    "decay_curve_without_retraining": {
+      "month_1_pr_auc_in_sample_caveat": 0.9069,
+      "month_2_pr_auc_first_held_out": 0.4761,
+      "month_6_pr_auc": 0.3680,
+      "relative_decay_month2_to_month6": -0.227
+    },
+    "psi_monitoring": {
+      "n_features_monitored": 369,
+      "n_weeks": 26,
+      "first_retrain_trigger_week": 2,
+      "retrain_trigger_threshold": "20+ features with PSI > 0.2",
+      "persistent_weekly_breach_range": "16-35 features/week after onset"
+    },
+    "drift_triggered_retrain": {
+      "n_retrains_triggered": 2,
+      "n_retrains_promoted": 2,
+      "week_4_pr_auc_serving": 0.5913,
+      "week_14_pr_auc_degraded_pre_retrain": 0.2635,
+      "week_15_pr_auc_recovered_post_retrain": 0.5211,
+      "recovered_delta_absolute": 0.2576,
+      "recovered_delta_relative": 0.978
+    }
+  },
+  "serving": {
+    "onnx_parity_max_abs_diff": 2.98e-7,
+    "onnx_conversion_note": "categorical-native XGBoost export genuinely fails (RecursionError / feature-name pattern error in onnxmltools); numeric ordinal-encoded serving variant works, documented in results/phase4_serving.md",
+    "single_request_latency_ms": 20.98,
+    "load_test_50_users": {
+      "total_requests": 10018,
+      "failures": 0,
+      "throughput_req_s": "170-200",
+      "p50_ms": 240,
+      "p95_ms": 380,
+      "p99_ms": 490,
+      "max_ms": 640,
+      "note": "p50 is 240ms under load vs 21ms single-request -- queueing from a single uvicorn worker, not slower inference"
+    },
+    "k3d_hpa_load_test": {
+      "replicas_before": 2,
+      "replicas_after_scale_event": 4,
+      "scale_trigger": "cpu resource utilization above target (kubectl event, real)",
+      "probe_starvation_finding": "near-simultaneous liveness/readiness probe failures across pods under 100-user load, one pod killed and restarted by kubelet",
+      "locust_failure_rate_caveat": "99.71% Locust failure rate during this test is a kubectl-port-forward single-pod-tunnel artifact, not a scorer-wide number -- see results/phase6_production.md"
+    }
+  },
+  "analyst_budget_precision_at_k": {
+    "0.5pct_budget": {"reviews_per_day": 14, "mean_precision": 0.877},
+    "1.0pct_budget": {"reviews_per_day": 28, "mean_precision": 0.756},
+    "2.0pct_budget": {"reviews_per_day": 56, "mean_precision": 0.596},
+    "5.0pct_budget": {"reviews_per_day": 141, "mean_precision": 0.371}
+  },
+  "training_serving_skew": {
+    "feast_materialize_vs_source": {
+      "mismatches": 0,
+      "n_checked": 1500,
+      "note": "trivially consistent -- materialize is a straight copy, can't structurally diverge"
+    },
+    "real_time_redis_vs_buffered_parquet": {
+      "mismatches": 240,
+      "n_checked": 2772,
+      "mismatch_rate": 0.0866,
+      "root_cause": "Parquet sink buffers 200 rows before flush (durability tradeoff) while Redis sink writes per-event -- online briefly ahead of offline, the reverse of the usual assumption"
+    }
+  },
+  "feature_freshness_lag_ms": {
+    "1h_window": {"p50": 14675, "p95": 23933, "p99": 25620, "max": 27106},
+    "24h_window": {"p50": 14069, "p95": 27876, "p99": 32687, "max": 37024},
+    "7d_window": {"p50": 7424, "p95": 25662, "p99": 34914, "max": 37181}
+  }
+}
