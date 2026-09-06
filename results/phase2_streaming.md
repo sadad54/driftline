@@ -26,7 +26,7 @@ top-level README.
 - Verified against an 8,000-event replay: 12,746 window-close events for the 1h view alone,
   correctly bucketed and monotonically increasing window boundaries.
 - **Scope note:** this covers the `card1` entity only, not DeviceInfo/P_emaildomain (see Known
-  Gaps in TASKS.md) — the pattern generalizes directly, card1 alone exercises the full pipeline.
+  Gaps below) — the pattern generalizes directly, card1 alone exercises the full pipeline.
 
 ## Feast feature store
 - Entities/feature views registered for `card_velocity_{1h,24h,7d}`, `feast apply` +
@@ -91,7 +91,7 @@ worth being able to explain the breakdown, not just the number, in an interview.
    resuming from a stale offset rather than honoring `scan.startup.mode=earliest-offset`. Worked
    around with a configurable `FLINK_GROUP_ID` env var for isolated test runs.
 
-## What's NOT done yet (see TASKS.md Known Gaps)
+## What's NOT done yet (Known Gaps)
 - DeviceInfo/P_emaildomain entity velocity features (card1 only, this phase).
 - Spark Structured Streaming alternative path (PyFlink only, as permitted — the source doc says
   "claim both truthfully" and this documents the omission rather than falsely claiming both).

@@ -122,7 +122,6 @@ monitoring/     Prometheus scrape config, Grafana dashboard + provisioning
 tests/          unit, leakage, Feast-contract, and testcontainers integration tests
 results/        phase-by-phase findings, every number sourced from a real run
 metrics/        the consolidated, resume-ready rollup
-TASKS.md        the full build log — every checklist item, what's done, what's honestly not
 ```
 
 ## Reproduce it
@@ -188,7 +187,8 @@ lower the HPA's per-pod CPU target so pods scale out before saturating. Not yet 
 
 ## Known Gaps
 
-Logged honestly throughout the build, consolidated: **[`TASKS.md`](TASKS.md)** (bottom section) —
-covers scope decisions (Spark alternative path not built, device/email graph entities not added,
-GraphSAGE not yet wired into serving, k3d manifests cover the scorer only) and real limitations
-found along the way (multi-worker uvicorn fix not yet re-benchmarked, no demo video recorded).
+Logged honestly, not hidden — see the "Known Gaps" section at the end of each phase writeup in
+[`results/`](results/). Covers scope decisions (Spark alternative path not built, device/email
+graph entities not added, GraphSAGE not yet wired into serving, k3d manifests cover the scorer
+only) and real limitations found along the way (multi-worker uvicorn fix not yet re-benchmarked,
+no demo video recorded).
