@@ -32,6 +32,9 @@ kaggle.json
 .kube/
 *.key
 
+# internal build-tracking notes -- not part of the public repo
+TASKS.md
+
 # OS
 .DS_Store
 Thumbs.db
