@@ -52,7 +52,7 @@ specific, non-speculative reasons, not a vague "needs more work":
    stronger one down. The fix is a **learned/weighted ensemble** (e.g. a small logistic-regression
    stacker fit on `[xgb_score, graphsage_score, iso_score] -> isFraud` on a held-out validation
    slice carved from the tail of TRAIN, never touching TEST) rather than assuming equal weight —
-   not implemented here; logged in Known Gaps as the concrete next step, not "more tuning."
+   not implemented here; a concrete, well-defined next step, not "more tuning."
 2. **5 epochs of mini-batch training with a 64-dim hidden size, on CPU, within this build's time
    budget** is genuinely undertrained relative to a 400-tree, fully-tuned XGBoost baseline with
    access to all 434 hand-engineered features. The loss curve (0.994 → 0.674, still declining)
