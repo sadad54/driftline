@@ -32,8 +32,9 @@ kaggle.json
 .kube/
 *.key
 
-# internal build-tracking notes -- not part of the public repo
+# internal build-tracking / prep notes -- not part of the public repo
 TASKS.md
+INTERVIEW_STORIES.md
 
 # OS
 .DS_Store
