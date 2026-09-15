@@ -51,13 +51,13 @@ def chart_decay_recovery():
         f"retrain fires\nweek 14: {w14:.3f}",
         xy=(14, w14), xytext=(11.5, w14 - 0.08),
         ha="center", fontsize=10, color=RED, fontweight="bold",
-        arrowprops=dict(arrowstyle="->", color=RED, lw=1.5),
+        arrowprops={"arrowstyle": "->", "color": RED, "lw": 1.5},
     )
     ax.annotate(
         f"week 15: {w15:.3f}\n(+97.8% in one week)",
         xy=(15, w15), xytext=(18.5, w15 + 0.06),
         ha="left", fontsize=10, color=GREEN, fontweight="bold",
-        arrowprops=dict(arrowstyle="->", color=GREEN, lw=1.5),
+        arrowprops={"arrowstyle": "->", "color": GREEN, "lw": 1.5},
     )
 
     ax.set_title("Fraud model performance over a 6-month replay,\nwith drift-triggered retraining",
@@ -97,7 +97,7 @@ def chart_split_comparison():
         f"+{inflation:.3f} inflation\nfrom the split alone",
         xy=(1, values[1] - 0.05), xytext=(0.5, 0.30),
         ha="center", fontsize=11, color=RED, fontweight="bold",
-        arrowprops=dict(arrowstyle="->", color=RED, lw=1.5),
+        arrowprops={"arrowstyle": "->", "color": RED, "lw": 1.5},
     )
 
     ax.set_title("Same model. Same data. Only the split changed.",

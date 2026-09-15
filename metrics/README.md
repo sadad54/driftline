@@ -43,9 +43,12 @@ Honest decay: **month 2 → month 6, -22.7% relative**, no retraining.
 
 ## Drift-triggered retraining: shadow-scored, gated, recovered
 - **2/2 triggered retrains passed the causal shadow-scored promotion gate.**
-- **The recovered delta:** week 4 PR-AUC 0.5913 degraded to week 14's **0.2635** (worse than the
-  untreated month-6 baseline) → retraining recovered it to week 15's **0.5211** — **+0.2576
-  absolute, +97.8% relative, in a single week.**
+- First promotion, identical shadow holdout: candidate PR-AUC **0.4802005** versus
+  incumbent **0.2810550**. This is the comparable promotion result.
+- Week 14 **0.2635** to week 15 **0.5211** is a descriptive week-over-week
+  change (+0.2576), across different samples. Do not claim 98% causal uplift.
+- All results are from historical IEEE-CIS replay. The serving model is the
+  ordinal-encoded XGBoost variant; the GNN ensemble is a separate experiment.
 
 ## Serving
 - ONNX parity (native XGBoost vs. ONNX Runtime): max abs diff **2.98e-7**.

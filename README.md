@@ -25,8 +25,11 @@ Trained on the earliest month of data, evaluated forward with no retraining, PR-
 by real drift in the data, not injected noise. A weekly PSI-triggered retraining loop, walked
 forward across the same six months with a **causal shadow-scored promotion gate** (every
 candidate model evaluated on a held-out tail of its own training window before being trusted —
-never on the future), recovers a mid-stream collapse from PR-AUC **0.2635 to 0.5211** — a
-**+97.8% relative recovery in a single week** — and both retrains it triggered were promoted.
+never on the future). At the first promotion, the candidate scored **0.4802 PR-AUC**
+versus the incumbent's **0.2811 on the same shadow holdout**; both triggered
+retrains passed the promotion gate. Week 14 to week 15 PR-AUC rose from 0.2635
+to 0.5211, but those are different weekly samples, not a causal treatment effect.
+This is a historical IEEE-CIS replay, not live customer traffic.
 
 *(Full numbers, every one sourced from a committed `results/*.json` file:
 [`metrics/README.md`](metrics/README.md).)*
