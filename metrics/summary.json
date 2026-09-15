@@ -16,7 +16,7 @@
     "xgboost_baseline": {
       "pr_auc": 0.4751,
       "roc_auc": 0.8892,
-      "recall_at_1pct_fpr": 0.3760,
+      "recall_at_1pct_fpr": 0.376,
       "precision_at_k_1181": 0.8163,
       "n_test": 118108
     },
@@ -49,7 +49,7 @@
     "time_ordered_split_pr_auc": 0.4751,
     "random_split_pr_auc": 0.6974,
     "pr_auc_inflation": 0.2222,
-    "recall_at_1pct_fpr_time_ordered": 0.3760,
+    "recall_at_1pct_fpr_time_ordered": 0.376,
     "recall_at_1pct_fpr_random": 0.6175,
     "recall_inflation": 0.2415
   },
@@ -57,7 +57,7 @@
     "decay_curve_without_retraining": {
       "month_1_pr_auc_in_sample_caveat": 0.9069,
       "month_2_pr_auc_first_held_out": 0.4761,
-      "month_6_pr_auc": 0.3680,
+      "month_6_pr_auc": 0.368,
       "relative_decay_month2_to_month6": -0.227
     },
     "psi_monitoring": {
@@ -73,12 +73,17 @@
       "week_4_pr_auc_serving": 0.5913,
       "week_14_pr_auc_degraded_pre_retrain": 0.2635,
       "week_15_pr_auc_recovered_post_retrain": 0.5211,
-      "recovered_delta_absolute": 0.2576,
-      "recovered_delta_relative": 0.978
+      "week_over_week_delta_absolute": 0.2576,
+      "week_over_week_delta_relative": 0.978,
+      "comparison_note": "Different weekly samples; descriptive change, not causal uplift.",
+      "first_promotion_same_shadow_holdout": {
+        "candidate_pr_auc": 0.48020052673907415,
+        "incumbent_pr_auc": 0.2810550183991811
+      }
     }
   },
   "serving": {
-    "onnx_parity_max_abs_diff": 2.98e-7,
+    "onnx_parity_max_abs_diff": 2.98e-07,
     "onnx_conversion_note": "categorical-native XGBoost export genuinely fails (RecursionError / feature-name pattern error in onnxmltools); numeric ordinal-encoded serving variant works, documented in results/phase4_serving.md",
     "single_request_latency_ms": 20.98,
     "load_test_50_users": {
@@ -100,10 +105,22 @@
     }
   },
   "analyst_budget_precision_at_k": {
-    "0.5pct_budget": {"reviews_per_day": 14, "mean_precision": 0.877},
-    "1.0pct_budget": {"reviews_per_day": 28, "mean_precision": 0.756},
-    "2.0pct_budget": {"reviews_per_day": 56, "mean_precision": 0.596},
-    "5.0pct_budget": {"reviews_per_day": 141, "mean_precision": 0.371}
+    "0.5pct_budget": {
+      "reviews_per_day": 14,
+      "mean_precision": 0.877
+    },
+    "1.0pct_budget": {
+      "reviews_per_day": 28,
+      "mean_precision": 0.756
+    },
+    "2.0pct_budget": {
+      "reviews_per_day": 56,
+      "mean_precision": 0.596
+    },
+    "5.0pct_budget": {
+      "reviews_per_day": 141,
+      "mean_precision": 0.371
+    }
   },
   "training_serving_skew": {
     "feast_materialize_vs_source": {
@@ -119,8 +136,23 @@
     }
   },
   "feature_freshness_lag_ms": {
-    "1h_window": {"p50": 14675, "p95": 23933, "p99": 25620, "max": 27106},
-    "24h_window": {"p50": 14069, "p95": 27876, "p99": 32687, "max": 37024},
-    "7d_window": {"p50": 7424, "p95": 25662, "p99": 34914, "max": 37181}
+    "1h_window": {
+      "p50": 14675,
+      "p95": 23933,
+      "p99": 25620,
+      "max": 27106
+    },
+    "24h_window": {
+      "p50": 14069,
+      "p95": 27876,
+      "p99": 32687,
+      "max": 37024
+    },
+    "7d_window": {
+      "p50": 7424,
+      "p95": 25662,
+      "p99": 34914,
+      "max": 37181
+    }
   }
 }
