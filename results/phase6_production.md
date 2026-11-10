@@ -1,6 +1,6 @@
 # Phase 6 — Production Checklist: results and findings
 
-## CI (GitHub Actions, 5 jobs)
+## CI (GitHub Actions, 6 jobs)
 - `lint-and-unit-test`: ruff + data-free tests (leakage, graph, split invariants).
 - `feast-contract-test`: Phase 2's deferred schema contract test, now actually running in CI.
 - `integration-test`: real testcontainers Redpanda + Redis, 1,000-event produce/consume,
@@ -10,6 +10,8 @@
   Kaggle credentials and doesn't belong in every CI run. The full-scale numbers everywhere else
   in this repo always come from the complete dataset on the project's VM.
 - `docker-build`: builds the actual `serving/Dockerfile` image.
+- `serving-overload-test` (added with the probe-starvation fix): the scorer on a live uvicorn
+  server with a blocking fake model; checks liveness stays answerable and excess load is shed.
 
 **Two real bugs found and fixed by actually running CI, not assumed:**
 1. **Disk exhaustion** (`No space left on device`): installing the full `requirements.txt` in
@@ -78,7 +80,10 @@ label-derived feature names.
   the producer is a batch/replay job and the Flink job would need a full Flink-on-Kubernetes
   operator, both substantial additional infra beyond this build's time budget. Only the scorer
   (the actual long-running production service) has a k8s Deployment.
-- Multi-worker uvicorn re-benchmark (the direct fix for the probe-starvation finding above).
+- Probe starvation: a fix is now implemented (separate liveness/readiness endpoints, admission
+  control, tuned probes) and measured locally in `phase6_overload_fix.md`. **The k3d load test
+  above has not been re-run against it yet**, so the numbers in this file still describe the
+  old code. Procedure: `docs/overload-rerun.md`.
 - A load-test methodology that doesn't rely on `kubectl port-forward`'s single-pod tunnel (e.g.
   a load generator running inside the cluster, or a NodePort/Ingress) for a genuinely
   representative Service-level throughput number.

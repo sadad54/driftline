@@ -86,6 +86,9 @@ ablations that *didn't* work are as much a deliverable as the ones that did:
   100 concurrent users at the k3d-deployed scorer produced a genuine HPA scale event (2→4
   replicas) *and* near-simultaneous liveness-probe failures across pods (single uvicorn worker
   too saturated to answer a trivial health check), causing a real kubelet-triggered restart.
+  A fix (separate liveness/readiness, admission control with load shedding) is implemented and
+  measured locally; the k3d load-test result is **pending re-run**
+  ([details](results/phase6_overload_fix.md)).
 - **The categorical-native XGBoost model genuinely fails ONNX export** (`RecursionError` /
   a feature-name-pattern error in `onnxmltools`, confirmed by trying, not assumed). The serving
   model is a numeric ordinal-encoded variant, documented as a deliberate difference from the
@@ -185,8 +188,14 @@ window was too short/noisy to retrain on cleanly (see `MIN_WEEKS_BETWEEN_RETRAIN
 
 **Scorer pods failing liveness/readiness probes under load:** this is a known, reproduced
 finding (see `results/phase6_production.md`) — a single uvicorn worker per pod can't answer
-`/health` while saturated handling `/score` requests. Fix: run `uvicorn --workers N` per pod, or
-lower the HPA's per-pod CPU target so pods scale out before saturating. Not yet applied here.
+`/health` while saturated handling `/score` requests. **Fix implemented, cluster re-run
+pending:** liveness and readiness are now separate endpoints (`/healthz`, `/readyz`), the scorer
+admits a bounded number of `/score` requests and sheds the rest with `503 + Retry-After`, and the
+probes have explicit timeouts. In a local reproduction under a CPU quota the old code failed 18-22
+of ~35 probes and the new code failed none; see
+[`results/phase6_overload_fix.md`](results/phase6_overload_fix.md). The k3d load test has not
+been repeated yet ([`docs/overload-rerun.md`](docs/overload-rerun.md)). If shedding shows up in
+`driftline_score_shed_total`, the pod is doing its job and the service needs more replicas.
 
 ## Known Gaps
 
