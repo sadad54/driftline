@@ -1,7 +1,7 @@
 # Core
 pandas==2.2.2
 numpy==1.26.4
-pyarrow>=15.0.0
+pyarrow>=15.0.0,<18  # recent pyarrow (26.x) refuses NumPy 1.x, which xgboost 2.0.3 needs; 17 is verified
 duckdb>=1.0.0
 
 # ML
