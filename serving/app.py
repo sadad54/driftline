@@ -12,8 +12,11 @@ measures.
 """
 from __future__ import annotations
 
+import asyncio
 import json
+import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional
 
@@ -21,9 +24,53 @@ import numpy as np
 import onnxruntime as ort
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import Counter, Gauge, Histogram, generate_latest, CONTENT_TYPE_LATEST
 
 MODEL_DIR = Path(__file__).resolve().parent.parent / "models" / "artifacts"
+
+# --- Overload behaviour ------------------------------------------------------------------------
+# The Phase 6 load test found that a saturated pod stopped answering its own health probe and was
+# restarted by kubelet while it was healthy (results/phase6_production.md). Three changes fix the
+# cause, and they are deliberately in the application, not only in the probe settings:
+#
+#   1. Scoring runs on its own small thread pool. The event loop only parses requests and answers
+#      probes, so a probe never waits behind scoring work.
+#   2. Admission control. At most DRIFTLINE_MAX_INFLIGHT /score requests are admitted at once.
+#      Anything beyond that is refused immediately with 503 + Retry-After, before its body is
+#      read, so the queue (and therefore latency) is bounded and the pod sheds load it cannot serve.
+#   3. Liveness and readiness are separate endpoints. /healthz only says "the process is
+#      responsive". /readyz says "this pod can serve" (model loaded). Being busy is never a
+#      reason to fail liveness.
+SCORER_THREADS = int(os.getenv("DRIFTLINE_SCORER_THREADS", "2"))
+MAX_INFLIGHT = int(os.getenv("DRIFTLINE_MAX_INFLIGHT", "16"))
+ORT_THREADS = int(os.getenv("DRIFTLINE_ORT_THREADS", "1"))
+RETRY_AFTER_SECONDS = "1"
+
+
+class AdmissionLimiter:
+    """Counts admitted /score requests. Only ever touched from the event loop thread, so a plain
+    integer is enough -- no lock."""
+
+    def __init__(self, limit: int):
+        self.limit = limit
+        self.inflight = 0
+
+    def try_acquire(self) -> bool:
+        if self.inflight >= self.limit:
+            return False
+        self.inflight += 1
+        return True
+
+    def release(self) -> None:
+        self.inflight -= 1
+
+    @property
+    def saturated(self) -> bool:
+        return self.inflight >= self.limit
+
+
+limiter = AdmissionLimiter(MAX_INFLIGHT)
+_executor = ThreadPoolExecutor(max_workers=SCORER_THREADS, thread_name_prefix="scorer")
 
 app = FastAPI(title="Driftline Fraud Scoring Service")
 
@@ -38,6 +85,51 @@ FRAUD_SCORE = Histogram(
     buckets=(0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1.0),
 )
 
+SCORE_SHED = Counter(
+    "driftline_score_shed_total", "/score requests refused with 503 because the pod was at capacity"
+)
+SCORE_INFLIGHT = Gauge("driftline_score_inflight", "/score requests currently admitted (running or queued)")
+
+_SHED_BODY = b'{"detail":"scorer at capacity, retry shortly"}'
+
+
+class AdmissionControlMiddleware:
+    """Refuses /score when the pod is at capacity, before the request body is read or parsed.
+
+    Written as a raw ASGI middleware on purpose: rejecting inside the route handler would still
+    make the event loop read and validate a full feature payload for a request it is about to
+    refuse, which is exactly the work an overloaded pod cannot afford."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or scope["path"] != "/score" or scope["method"] != "POST":
+            await self.app(scope, receive, send)
+            return
+        if not limiter.try_acquire():
+            SCORE_SHED.inc()
+            await send({
+                "type": "http.response.start",
+                "status": 503,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"retry-after", RETRY_AFTER_SECONDS.encode()),
+                    (b"content-length", str(len(_SHED_BODY)).encode()),
+                ],
+            })
+            await send({"type": "http.response.body", "body": _SHED_BODY})
+            return
+        SCORE_INFLIGHT.set(limiter.inflight)
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            limiter.release()
+            SCORE_INFLIGHT.set(limiter.inflight)
+
+
+app.add_middleware(AdmissionControlMiddleware)
+
 _session: Optional[ort.InferenceSession] = None
 _preprocessing: Optional[dict] = None
 _feast_store = None
@@ -50,7 +142,12 @@ def load_model():
     prep_path = MODEL_DIR / "serving_preprocessing.json"
     if not onnx_path.exists():
         raise RuntimeError(f"ONNX model not found at {onnx_path} -- run scripts/export_onnx.py first")
-    _session = ort.InferenceSession(str(onnx_path))
+    # One intra-op thread: single-row tree inference gains nothing from more, and ONNX Runtime's
+    # default (one spinning thread per host core) fights the scorer threads for a pod's CPU limit.
+    opts = ort.SessionOptions()
+    opts.intra_op_num_threads = ORT_THREADS
+    opts.inter_op_num_threads = 1
+    _session = ort.InferenceSession(str(onnx_path), sess_options=opts)
     with open(prep_path) as f:
         _preprocessing = json.load(f)
 
@@ -90,11 +187,16 @@ def _encode_row(features: dict) -> np.ndarray:
 
 
 @app.post("/score", response_model=ScoreResponse)
-def score(txn: Transaction):
+async def score(txn: Transaction):
     if _session is None:
         raise HTTPException(503, "model not loaded")
-
+    # t0 is taken before the hand-off, so the latency metric includes time spent queued for a
+    # scorer thread -- the number a caller actually experiences.
     t0 = time.perf_counter()
+    return await asyncio.get_running_loop().run_in_executor(_executor, _score_sync, txn, t0)
+
+
+def _score_sync(txn: Transaction, t0: float) -> ScoreResponse:
     features = dict(txn.features)
     velocity_used = False
 
@@ -129,11 +231,32 @@ def score(txn: Transaction):
     return ScoreResponse(fraud_score=fraud_score, latency_ms=elapsed * 1000, velocity_features_available=velocity_used)
 
 
+@app.get("/healthz")
+async def healthz():
+    """Liveness: is the process responsive? Deliberately checks nothing else. It is async and does
+    no work, so it is answered by the event loop even when every scorer thread is busy."""
+    return {"status": "alive"}
+
+
+@app.get("/readyz")
+async def readyz(response: Response):
+    """Readiness: can this pod serve traffic? False only while the model is not loaded.
+
+    Saturation is reported in the body but does not fail readiness. An overloaded pod already
+    refuses excess work with 503 + Retry-After; also pulling it out of the Service would push its
+    share of traffic onto the other pods and tip them over in turn."""
+    ready = _session is not None
+    if not ready:
+        response.status_code = 503
+    return {"ready": ready, "saturated": limiter.saturated, "inflight": limiter.inflight, "limit": limiter.limit}
+
+
 @app.get("/health")
-def health():
+async def health():
+    """Kept for existing scripts and dashboards. Same cost as /healthz."""
     return {"status": "ok", "model_loaded": _session is not None}
 
 
 @app.get("/metrics")
-def metrics():
+async def metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)

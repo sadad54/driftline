@@ -27,18 +27,37 @@ spec:
             limits:
               cpu: "1"
               memory: "1Gi"
-          livenessProbe:
+          env:
+            # Overload behaviour (see serving/app.py and docs/overload-rerun.md).
+            - name: DRIFTLINE_MAX_INFLIGHT   # /score requests admitted at once; the rest get 503 + Retry-After
+              value: "16"
+            - name: DRIFTLINE_SCORER_THREADS
+              value: "2"
+            - name: DRIFTLINE_ORT_THREADS    # 1: do not let ONNX Runtime spin a thread per host core inside a 1-CPU limit
+              value: "1"
+          # Three probes with three different jobs. Before this change liveness and readiness both
+          # hit /health with the default 1 s timeout and 3 failures, so a pod that was merely busy
+          # for ~30 s was killed (results/phase6_production.md).
+          startupProbe:            # model load: up to 60 s before liveness starts counting
             httpGet:
-              path: /health
+              path: /readyz
               port: 8000
-            initialDelaySeconds: 5
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:           # "is the process responsive at all?" -- restart only after 60 s of silence
+            httpGet:
+              path: /healthz
+              port: 8000
             periodSeconds: 10
-          readinessProbe:
+            timeoutSeconds: 3
+            failureThreshold: 6
+          readinessProbe:          # "can it serve?" -- model loaded. Saturation is shed in-app, not here.
             httpGet:
-              path: /health
+              path: /readyz
               port: 8000
-            initialDelaySeconds: 5
             periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
           volumeMounts:
             - name: model-artifacts
               mountPath: /app/models/artifacts
